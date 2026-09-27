@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JOC · Sala de Revisión de Clips</title>
+<script type="application/json" id="saved-state"></script>
+<style>
+:root{
+  --bg:#0d1220; --bg2:#131a2e; --card:#171f36; --card2:#1c2542;
+  --line:#2a3454; --txt:#e9edf7; --mut:#9aa4c2; --acc:#6d7cff; --acc2:#8f5bff;
+  --ok:#2ecc8f; --bad:#ff5c6c; --warn:#ffb347; --rad:16px;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:linear-gradient(160deg,var(--bg),#0a0e1a 70%);color:var(--txt);min-height:100vh}
+header{position:sticky;top:0;z-index:50;background:rgba(13,18,32,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding:14px 22px}
+.hrow{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--acc),var(--acc2));display:grid;place-items:center;font-weight:800;font-size:15px}
+h1{font-size:17px;margin:0}
+.sub{font-size:12px;color:var(--mut)}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+button{cursor:pointer;border:none;border-radius:10px;padding:9px 14px;font-size:13px;font-weight:600;background:var(--card2);color:var(--txt);border:1px solid var(--line);transition:.15s}
+button:hover{transform:translateY(-1px);border-color:var(--acc)}
+button.primary{background:linear-gradient(135deg,var(--acc),var(--acc2));border:none}
+.controls{display:flex;flex-wrap:wrap;gap:10px;padding:14px 22px;border-bottom:1px solid var(--line);align-items:center}
+.search{flex:1;min-width:220px}
+input[type=text]{width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:var(--bg2);color:var(--txt);font-size:13px}
+input[type=text]:focus{outline:none;border-color:var(--acc)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{padding:7px 13px;border-radius:999px;background:var(--bg2);border:1px solid var(--line);font-size:12px;color:var(--mut);cursor:pointer;user-select:none}
+.chip.on{background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;border-color:transparent}
+.count{color:var(--mut);font-size:12px;padding:0 22px 8px}
+main{padding:8px 22px 60px;max-width:1100px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--rad);margin-bottom:16px;overflow:hidden}
+.card.confirmed{border-color:var(--ok)}
+.card.rejected{border-color:var(--bad)}
+.chead{padding:16px 18px;cursor:pointer;display:flex;gap:14px;align-items:flex-start}
+.badge{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:4px 9px;border-radius:6px;white-space:nowrap}
+.b-ep55{background:#2b2f55;color:#aeb7ff}.b-webinar{background:#3a2550;color:#e0b3ff}.b-asesoria{background:#173d34;color:#7fe0bd}
+.b-cat{background:#24304f;color:#9fd0ff}
+.ctitle{flex:1}
+.ctitle h3{margin:0 0 6px;font-size:16px}
+.meta{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--mut)}
+.meta b{color:#c8d1ea}
+.status-pill{font-size:11px;font-weight:800;padding:5px 11px;border-radius:999px;text-transform:uppercase;letter-spacing:.05em}
+.s-draft{background:#333c5c;color:#aab3d0}
+.s-confirmed{background:rgba(46,204,143,.18);color:var(--ok)}
+.s-rejected{background:rgba(255,92,108,.18);color:var(--bad)}
+.cbody{display:none;padding:0 18px 18px;border-top:1px solid var(--line)}
+.card.open .cbody{display:block}
+.field{margin-top:16px}
+.field h4{margin:0 0 8px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--acc)}
+.box{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:13px 15px;font-size:13.5px;line-height:1.6}
+.box.hook{border-left:3px solid var(--warn);font-style:italic;color:#ffe3bd}
+.box.trans{border-left:3px solid var(--acc);max-height:260px;overflow:auto;white-space:pre-wrap}
+ul.clean{margin:6px 0;padding-left:20px}
+ul.clean li{margin:5px 0;font-size:13.5px;line-height:1.5;color:#d4dbef}
+.toolrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px;align-items:center}
+.stbtn{padding:9px 14px;border-radius:10px;font-weight:700;font-size:13px}
+.st-confirm{background:rgba(46,204,143,.14);color:var(--ok);border:1px solid rgba(46,204,143,.4)}
+.st-confirm.active{background:var(--ok);color:#04150d}
+.st-reject{background:rgba(255,92,108,.12);color:var(--bad);border:1px solid rgba(255,92,108,.4)}
+.st-reject.active{background:var(--bad);color:#2a060a}
+.st-draft{background:var(--bg2);color:var(--mut)}
+textarea{width:100%;margin-top:10px;min-height:70px;padding:11px 13px;border-radius:10px;border:1px solid var(--line);background:var(--bg2);color:var(--txt);font-size:13px;resize:vertical;font-family:inherit}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#101527;border:1px solid var(--acc);color:#fff;padding:12px 20px;border-radius:12px;font-size:13px;opacity:0;pointer-events:none;transition:.3s;z-index:99}
+.toast.show{opacity:1}
+.expand-ico{color:var(--mut);font-size:18px;transition:.2s}
+.card.open .expand-ico{transform:rotate(180deg)}
+@media(max-width:640px){.chead{flex-direction:column}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <div class="brand">
+      <div class="logo">JOC</div>
+      <div>
+        <h1>Sala de Revisión de Clips</h1>
+        <div class="sub">EP55 · Webinar · Asesoría — 60 clips cargados</div>
+      </div>
+    </div>
+    <div class="actions">
+      <button onclick="exportAllTXT()">⬇ TXT combinado</button>
+      <button onclick="exportVisibleTXT()">⬇ TXT visibles</button>
+      <button class="primary" onclick="exportHTML()">💾 Exportar HTML con cambios</button>
+    </div>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="search"><input type="text" id="search" placeholder="🔎 Buscar por título, hook, transcripción, categoría…" oninput="render()"></div>
+  <div class="chips" id="lotChips"></div>
+  <div class="chips" id="statusChips"></div>
+</div>
+<div class="count" id="count"></div>
+<main id="list"></main>
+<div class="toast" id="toast"></div>
+
+<script>
+const CLIPS = [
+/* ================= EP55 · AMANDA ================= */
+{id:"A01",lot:"ep55",cat:"Amanda",tipo:"Filosofía / Aprendizaje",titulo:"El 1% más todos los días",hook:"No sé si diría que amo estudiar, pero creo que he aprendido a disfrutármelo al cien por ciento.",ini:"04:08.120",fin:"04:59.520",dur:"51.4 s",
+porque:["Curiosidad: Desmitifica la pasión por estudiar, enfocándose en el disfrute del proceso.","Emoción: Honestidad sobre la convicción personal frente a la presión externa.","Retención: Cierra con una postura clara y definitiva sobre la universidad."],
+estructura:["Hook: Desmitificar el amor por estudiar.","Desarrollo: La pasión debe estar ligada al propósito y a la convicción de llegar a la meta.","Cierre: Postura definitiva: cada persona tiene su camino."],
+trans:`No sé si diría que amo estudiar, pero creo que he aprendido a disfrutármelo al 100% dentro de lo que es posible obviamente. Claro, me gusta porque hablaste de propósito, básicamente que no es solamente, o sea, yo creo que tiene que haber un nivel de pasión necesariamente, pero es una pasión ligada al propósito que bien claro lo dijiste, era de ser odontólogo. Entonces obviamente que tienes eso en mente y es como que tu end goal y es como que bueno, tengo que hacer lo que tengo que hacer para poder llegar ahí y eso amerita tiempo y esfuerzo. Entonces creo que eso va mucho de la convicción de la persona. ¿Qué opinas de esa gente que hoy en día dice que la universidad no es necesaria, que lo pueden abandonar, que no hace falta? Yo creo que cada persona tiene su camino, o sea realmente no soy quien para decir que una persona tiene que ir a la universidad obligatoriamente o no.`,
+nota:`Extraído del transcript. Fragmento continuo. No se añadieron frases. No se mezclaron partes. Source alignment: EXACT.`},
+
+{id:"A02",lot:"ep55",cat:"Amanda",tipo:"Emocional / Historia",titulo:"La frustración como punto de quiebre",hook:"Y yo me empecé a frustrar de una manera que yo decía: yo no soy buena en esto.",ini:"10:35.160",fin:"11:33.340",dur:"58.2 s",
+porque:["Curiosidad: Confesión cruda de vulnerabilidad de alguien que siempre fue 'buena estudiante'.","Emoción: Frustración somatizada que genera empatía inmediata.","Retención: Cierra con la acción concreta que tomó para superar el bloqueo."],
+estructura:["Hook: Confesión de frustración extrema y comparación con otros.","Desarrollo: El punto de quiebre y la decisión racional de desglosar el problema.","Cierre: La acción concreta: quedarse hasta tardísimo practicando."],
+trans:`Y yo me empecé a frustrar de una manera que yo decía: yo no soy buena en esto. O sea, toda mi vida soñando ser esto, ser odontólogo, y no se me da naturalmente. O sea, no se me da naturalmente la parte manual, o sea, yo me quería morir. Yo decía, todos estos años yo building up esta imagen en mi cabeza, lo que quería hacer cuando llegara el momento. Y yo al principio me frustraba muchísimo porque primero me comparaba con los demás. Yo me empecé a estresar horrible, somatizada de manera, bueno, en mi cuerpo, rashes, todo el estrés que me daba como la frustración, hasta que me sentí un día y dije: ¿como que, pero o sea, cuál es la cosa? ¿Qué es lo que tengo que hacer? O sea, cuáles son, vamos a desglosar esto que yo tengo que mejorar, porque para mejorar tengo que entender qué está pasando, ok. ¿Qué es lo que no sé hacer esto? ¿Qué tengo que hacer para llegar al nivel donde quiero estar y más? Esto, ok. Entonces, ¿qué tengo que hacer todos los días para llegar a esto? Entonces, por ejemplo, yo veía que mis amigos no practicaban todos los días. Yo terminaba clases y me quedaba en la noche hasta tardísimo encerando dientes.`,
+nota:`Extraído del transcript. Fragmento continuo. No se añadieron frases. Source alignment: EXACT.`},
+
+{id:"A03",lot:"ep55",cat:"Amanda",tipo:"Reflexión",titulo:"La autenticidad de mostrar la realidad",hook:"Yo cuando estaba estudiando odontología, soy muy positiva pero soy muy realista.",ini:"21:26.700",fin:"22:17.240",dur:"50.5 s",
+porque:["Curiosidad: Rompe la fachada de perfección de las redes sociales.","Emoción: Honestidad brutal sobre mostrar los procesos reales.","Retención: Deja claro que informar sobre la realidad no desmotiva, sino que prepara."],
+estructura:["Hook: Declaración de realismo positivo.","Desarrollo: Mostrar la realidad de los procesos estudiantiles.","Cierre: Valida que su autenticidad viene de raíz."],
+trans:`Yo cuando estaba estudiando odontología, yo soy una persona, como dije desde el principio, soy muy positiva pero soy muy realista. A mí siempre me ha gustado mostrar la realidad de mis procesos, la realidad de, en ese caso, ser estudiante de odontología, cosas que las personas normalmente no dicen, pero es la realidad. Y eso no significa que es algo por lo cual te vas a desmotivar, pero sí pienso que ante cualquier reto de la vida tienes que estar lo más informado posible para saber a qué te estás enfrentando y afrontarlo de la mejor manera. Entonces veía que había como una falta de realidad en el ámbito estudiantil odontológico y dije: voy a compartir, voy a empezar a compartir mis experiencias y hacía blogs en YouTube, así comenzó todo mi camino. Y me empecé a dar cuenta que mucha gente le interesaba como esta autenticidad de mostrar lo que realmente es la carrera, y mucha gente comentaba: "yo no sabía que esto era así, nadie me había dicho que esto era así, qué bueno que ya lo sé, voy a empezar odontología, gracias".`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"A04",lot:"ep55",cat:"Amanda",tipo:"Emocional",titulo:"Materializar el impacto",hook:"Hoy justamente se graduaron dos de esas personas que están estudiando en mi universidad.",ini:"29:31.520",fin:"30:24.520",dur:"53.0 s",
+porque:["Curiosidad: Comienza in media res con un evento emocional concreto.","Emoción: Vulnerabilidad ('yo llorando') y validación externa ('nos cambiaron la vida').","Retención: Cierra con que el propósito también es un negocio sostenible."],
+estructura:["Hook: El momento culminante de ver a los estudiantes graduarse.","Desarrollo: La interacción emocional y la confirmación del impacto real.","Cierre: Materializar que el propósito también es rentable."],
+trans:`Hoy justamente se graduaron dos de esas personas que están estudiando en mi universidad. Pude compartir con ellas estos dos años trabajando casos juntos, o sea, increíble. Y justo hoy se graduaron y, bueno, obviamente la felicité, yo llorando, ellas en la tarima con su toga y birrete graduándose como odontólogas nuevamente. Y las abracé y me dijeron como que, o sea, ustedes fueron parte de este camino y, o sea, nos cambiaron la vida básicamente. Y yo dije: wow. A veces uno no, no calcula como el impacto que está teniendo en las personas. Pero no solo eso, sino que me dijeron también como: "no sabes lo que me sirvió y le recomendé demasiado su curso, su mentoría a otras personas, y de ellas, como otras amigas, también lo han podido lograr". O sea, es como the gift that keeps on giving básicamente. Pero fue algo increíble que me pasó hoy, que fue materializar ese impacto que puedes tener a través de tu propósito que también es rentable.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT. Payoff emocional completo.`},
+
+{id:"A05",lot:"ep55",cat:"Amanda",tipo:"Historia / Propósito",titulo:"Convertir el dolor en legado",hook:"Nunca pensé, nunca imaginé que iba a perder a mi papá tan temprana edad, pero pienso que eso me dio como un extra fire.",ini:"51:04.120",fin:"51:55.840",dur:"51.7 s",
+porque:["Curiosidad: Cómo una pérdida devastadora se transformó en el motor de un negocio.","Emoción: Profunda conexión con la figura paterna.","Retención: Muestra cómo el dolor se convirtió en un nuevo propósito."],
+estructura:["Hook: La pérdida del padre como motor inesperado.","Desarrollo: La responsabilidad de continuar su legado.","Cierre: Encontrar un nuevo propósito dentro del propósito."],
+trans:`Nunca, nunca pensé... a mi papá tan temprana edad, pero pienso que eso me dio como un, como un extra fire básicamente de convertir ese legado que él dejó en mí y de todas las cosas que me enseñó. No solamente odontológico, odontológico es más, lo odontológico fue lo de menos, pero su manera de ser, la manera en la que hacía todo para ayudar a los demás, que ese extra mile que siempre daba en absolutamente todo. Y bueno, mi mamá también siempre me inculcaron eso, pero siento la responsabilidad aún más grande de continuar su legado a mi manera, de seguir ayudando a otras personas desde mi ámbito como doctora odontológico, pero encontré otro propósito dentro de mi propósito gracias a esa dificultad que viví de crear mi propia compañía y seguir ayudando no ahora pacientes sino a otros colegas en conectar o reconectar con su propósito.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"A06",lot:"ep55",cat:"Amanda",tipo:"Negocio",titulo:"El espíritu empresarial del odontólogo",hook:"El odontólogo en sí tiene un espíritu muy empresarial y muy emprendedor.",ini:"13:11.160",fin:"14:06.220",dur:"55.1 s",
+porque:["Curiosidad: Reencuadra una carrera de salud como inherentemente empresarial.","Emoción: Empoderamiento para los profesionales de la salud.","Retención: Explica cómo la universidad enseña customer service desde el día uno."],
+estructura:["Hook: El odontólogo como emprendedor nato.","Desarrollo: La realidad de las prácticas privadas y ser tu propio jefe.","Cierre: La universidad como entrenamiento en balance y organización."],
+trans:`Para las personas que nos están viendo y siento que esto es algo que siempre digo, pero el odontólogo en sí tiene un espíritu muy empresarial y muy emprendedor. ¿Por qué? Porque la mayoría de nosotros practicamos en prácticas privadas en donde básicamente tú eres, bien sea o el dueño de tu propia clínica, de tu propio negocio, o tienes socios con los que trabajas, o trabajas en una clínica, pero la mayoría del tiempo tú eres tu propio jefe básicamente. Entonces es bastante singular porque en la universidad aprendes mucho de los soft skills también con el paciente, no solamente la parte de la habilidad y la teoría, pero también eso es lo que me gusta la odontología, que desde la universidad estás atendiendo pacientes y lidiando con los pacientes y el customer service básicamente, porque es customer service lidiar con el paciente que esté, digamos, esté de acuerdo con lo que estamos haciendo, que esté a gusto, etcétera, etcétera. Pero en líneas generales los odontólogos somos muy multifacéticos.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"A07",lot:"ep55",cat:"Amanda",tipo:"Filosofía",titulo:"Mentalidad de abundancia",hook:"100% de acuerdo, y al final es mentalidad de abundancia: totalmente, si das, vas a recibir.",ini:"42:51.000",fin:"43:46.940",dur:"55.9 s",
+porque:["Curiosidad: Desmiente el mito de que dar información gratuita arruina el negocio.","Emoción: Generosidad estratégica y confianza en el valor propio.","Retención: Explica cómo la autoridad atrae a los clientes ideales."],
+estructura:["Hook: La mentalidad de abundancia (si das, recibes).","Desarrollo: Compartir información demuestra autoridad y genera más preguntas valiosas.","Cierre: El ecosistema se retroalimenta, win-win."],
+trans:`100% de acuerdo, y al final es mentalidad abundancia, totalmente, si das, vas a recibir, y es así de sencillo. Y es por eso, es porque creas la conexión, creas la confianza, creas ese, ese bond, ¿no?, que te une más allá del simple, de la simple información. Al final, ¿qué pasa? Cuando estamos hablando de asesoría especializada, especialmente lo que comentabas para entrar en trabajos o en universidades, es como que yo quiero conseguirme los mejores, o sea, no es que there's no shortcuts, no es que, no es que te van a arreglar la vida, pero te van a dar una experiencia importantísima que tú no manejas, y lo que te va a costar a ti hacerlo, o sea, te puede costar el doble, el triple, el tiempo averiguarlo, porque no quiere decir que no lo vas a hacer, pero te van a ayudar, they're gonna point you in the right direction. Entonces eso vale, eso vale el tiempo, eso vale el esfuerzo, y eso vale para la persona, es una inversión.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT.`},
+
+/* ================= EP55 · JOC ================= */
+{id:"J01",lot:"ep55",cat:"Joc",tipo:"Filosofía / Reflexión",titulo:"El malentendido de la universidad",hook:"Hay algo que también pasa mucho, y es que hay un gran malentendido también con la universidad.",ini:"07:25.120",fin:"08:27.000",dur:"61.9 s",
+porque:["Curiosidad: Cuestiona la narrativa binaria de 'universidad sí o no'.","Emoción: Valida a quienes no siguen el camino tradicional.","Retención: Cierra con ejemplos concretos (Jobs, Zuckerberg)."],
+estructura:["Hook: El gran malentendido sobre la universidad.","Desarrollo: Ir a la universidad no te hace automáticamente un buen profesional.","Cierre: La universidad como microcosmos, pero no es la única vía."],
+trans:`Hay algo que también pasa mucho y es que hay un un gran malentendido también con la universidad y es que la gente piensa que por haber ido a la universidad eres un buen profesional o eres un o eres súper inteligente o eres muy bueno en lo que haces y no necesariamente. Yo conozco muchas personas que están en la universidad que llevan años estudiando y de repente no son tan habilidosos como personas que no están en la universidad y tienen años de experiencia de manera externa. Obviamente en la odontología eso no existe porque si no sería ilegal, pero en otros ámbitos. Entonces la universidad no te hace, tú haces la universidad y tú haces tu aprendizaje y tu conocimiento básicamente. Sí, en eso estoy de acuerdo y al final depende de cada persona, ¿no? Total, también es cierto que hay mucha gente que ha dejado la universidad o que no ha entrado a la universidad y tiene muchísimo éxito. O sea, yo no estoy diciendo que eso no sea tampoco una realidad, de hecho donde nos conocimos, nos conocimos en una conferencia de startups y había gente que son dropouts y tienen muchísimo éxito históricamente, ¿no? Un Steve Jobs, un Mark Zuckerberg dejaron la universidad y también son unos cracks y tienen todo el éxito del mundo.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"J02",lot:"ep55",cat:"Joc",tipo:"Aprendizaje / Resiliencia",titulo:"Piel gruesa y adaptabilidad",hook:"La vida te va a dar trancasos, la vida te va a llevar por zonas que no son cómodas.",ini:"12:14.640",fin:"13:05.240",dur:"50.6 s",
+porque:["Curiosidad: Desglamouriza el camino al éxito.","Emoción: Resiliencia y la necesidad de digerir las cosas malas.","Retención: Conecta las dificultades con la adaptabilidad."],
+estructura:["Hook: La vida saca de la zona de confort.","Desarrollo: La necesidad de tener 'thick skin' y adaptabilidad.","Cierre: Las cosas malas terminan dándole valor a las buenas."],
+trans:`La vida te va a dar trancasos, la vida te va a llevar por zonas que no son cómodas. Entonces yo creo que lo más importante es lo que tú hablabas hace rato del thick skin y la capacidad de adaptabilidad que applies for everything, porque al final hay que terminar de digerir las cosas malas también porque son parte de la vida y muchas veces las cosas malas terminan dándole valor a las cosas buenas. Entonces yo creo que hay mucho de entender y parte de la filosofía del éxito en todos los aspectos académico, empresarial, de todo tipo de comunitario, de sociedad, de lo que sea, es la capacidad de adaptación y el progreso continuo que lo dijiste de la mejor manera posible, o sea que de verdad es 100% así.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"J03",lot:"ep55",cat:"Joc",tipo:"Reflexión / Legado",titulo:"La grandeza en las pequeñas cosas",hook:"Yo siempre pienso que la grandeza está en las pequeñas cosas, y como tú eres en las pequeñas cosas, eres en todo lo demás.",ini:"17:49.260",fin:"18:50.360",dur:"61.1 s",
+porque:["Curiosidad: Redefine el 'legado' alejándolo de lo grandilocuente.","Emoción: Calidez y enfoque en el trato humano.","Retención: 'No es lo que dejas para los demás, sino lo que dejas en los demás'."],
+estructura:["Hook: La grandeza en los detalles.","Desarrollo: El legado no es lo que dejas, es lo que dejas en los demás.","Cierre: La diferencia la hace la esencia y el propósito."],
+trans:`Yo siempre pienso en el legado porque lo que tú dices el legado y no es, yo siempre pienso que la grandeza está en las pequeñas cosas y como tú eres en las pequeñas cosas, eres en todo lo demás. Y el legado para mí es no es lo que dejas para los demás, sino lo que dejas en los demás. Desde eso es lo que tú estás diciendo, desde tratar bien a los demás, desde ir a ese extra mile, de ser, de preocuparte por la otra persona, de tener un propósito y un por qué en todo lo que haces que eso se nota, esa diferencia se nota porque hay millones de personas que son talentosas, millones de personas que hacen bien las cosas, que tienen buenos skills, que son también perseverantes, pero ese factor diferenciador muchas veces está en eso, en tu esencia, pero en tu propio propósito y en lo que inspiras en los demás porque tú mismo lo vives todos los días de esa manera. Entonces para mí eso también es es importante desde el aspecto de la salud como doctora, pero también desde el aspecto de compañía, de negocio, de emprendimiento, porque eso es algo que se contagia y se contagia en tu equipo, se contagia a las personas en tus clientes, se contagia a mayores escalas de repente inspirando a otras personas que no tienen nada que ver con tu gremio pero que ven esa cultura y ven esa manera de llevar tu negocio y dicen que increíble, me encantaría hacer algo así, se va como contagiando ese ese propósito o ese ese por qué pues que trasciende más allá de lo que tú puedes hacer.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"J04",lot:"ep55",cat:"Joc",tipo:"Emocional / Validación",titulo:"Orgullo venezolano",hook:"Definitivamente admirable, ha sido una labor titánica. Me alegra muchísimo que estés ayudando a tanta gente.",ini:"31:38.520",fin:"32:29.140",dur:"50.6 s",
+porque:["Curiosidad: Reconocimiento genuino del impacto de una venezolana en el extranjero.","Emoción: Orgullo nacional y validación del esfuerzo titánico.","Retención: El éxito se mide por a cuántas personas ayudas."],
+estructura:["Hook: Reconocimiento de la labor titánica.","Desarrollo: El orgullo de ver a una venezolana representando con excelencia.","Cierre: La satisfacción de ver el impacto materializado."],
+trans:`Definitivamente admirable, ha sido una labor titánica por lo que escucho pero con propósito, con pasión, con esfuerzo y con dedicación que lo hace aún mejor. Y hoy en día habiendo ayudado a 1500 odontólogos, que hayas visto a estas personas graduándose, viendo el reflejo de ese trabajo materializado, me parece que es algo súper, súper increíble y de verdad que te felicito. Y me pone a pensar un poco sobre tu historia porque decías que tu papá básicamente fue la inspiración y tu ancla para todo esto. Lamentablemente hoy no está acá, pero siempre estará contigo. Y me pregunto, me pregunto qué pensaría, qué te diría hoy en día si te viera con todo lo que has logrado. Qué te diría: bueno, yo creo que estaría súper, súper orgulloso y súper contento.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"J05",lot:"ep55",cat:"Joc",tipo:"Emocional / Propósito",titulo:"La pregunta al padre",hook:"Me pregunto un poco sobre tu historia, porque decías que tu papá básicamente fue la inspiración.",ini:"50:20.820",fin:"51:18.000",dur:"57.2 s",
+porque:["Curiosidad: Una pregunta emocional profunda que detiene el scroll.","Emoción: Conexión con la figura paterna y el duelo transformado.","Retención: Prepara el terreno para un cierre sobre el legado."],
+estructura:["Hook: La pregunta sobre la inspiración paterna.","Desarrollo: El reconocimiento de que su inspiración sigue presente.","Cierre: Transición hacia cómo el dolor se convirtió en propósito."],
+trans:`Me pregunto un poco sobre tu historia porque decías que tu papá básicamente fue la inspiración y tu ancla para todo esto. Lamentablemente hoy no está acá pero siempre estará contigo y me pregunto, me pregunto qué pensaría, qué te diría hoy en día si te viera con todo lo que has logrado. Qué te diría: bueno, yo creo que estaría súper, súper orgulloso y súper contento. Pero algo muy interesante que que también mencionaste de tu conversación con alguien que estabas entrevistando, creo que Alberto Volmer, es que las dificultades por las que por las que pasas en la vida tienes dos opciones como todo: o las, o le encuentras la oportunidad y le encuentras el aprendizaje, o te quedas estancado. Que los dos son válidos porque cada quien, digamos, interpreta las dificultades de maneras distintas, pero pienso que siempre he sido una persona que las dificultades que he encontrado siempre le busco la oportunidad, siempre le busco el de qué me va a servir esto, qué puedo aprender de esto y cómo puedo convertir el dolor en propósito básicamente.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"J06",lot:"ep55",cat:"Joc",tipo:"Filosofía / Empoderamiento",titulo:"El camino de la victoria",hook:"Sabes que decías que hay dos posibles caminos, ¿no? Quien enfrenta las cosas y lo supera, y quien no.",ini:"52:19.540",fin:"53:25.000",dur:"65.5 s",
+porque:["Curiosidad: Plantea una dicotomía clara sobre cómo enfrentar la adversidad.","Emoción: Empoderamiento y reconocimiento del esfuerzo ('you paid your dues').","Retención: La frase 'pagar el precio' y tomar el camino de la victoria."],
+estructura:["Hook: Los dos caminos ante la dificultad.","Desarrollo: Ambas son válidas, pero solo una lleva a la victoria.","Cierre: Reconocimiento de que ella pagó el precio."],
+trans:`Sabes que decías que hay dos posibles caminos, ¿no? Quien enfrenta las cosas y lo supera y quien no, que ambas son válidas. Una opinión un poco unpopular aquí: es verdad, las dos son válidas, pero solo una te lleva a la victoria. Sí, y yo siento que tú has tomado ese camino. You paid your dues, hiciste lo que tenías que hacer, buscaste las alianzas que tenías que buscar, pusiste el tiempo que había que poner y el esfuerzo, y yo creo que eso se ha visto recompensado. Me alegra muchísimo que estés ayudando a tanta gente. De verdad, yo siento que eres un orgullo totalmente, no solo para tu familia, sino para todos los venezolanos. De verdad que yo contigo me siento excelentemente representado y con orgullo diré que conozco a la doctora Amanda Vicari que acaba de hacer un proyecto interesantísimo y está ayudando muchísima gente. Así que de verdad yo voy a tomarme el atrevimiento de hablar por todos esos odontólogos que están en tu plataforma y te voy a dar las gracias por haberte atrevido a hacer eso.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"J07",lot:"ep55",cat:"Joc",tipo:"Negocio / Comunidad",titulo:"La misión de dar oportunidad",hook:"Yo siento que este espacio es tan bueno como mis invitados. Y esto es una ventana, y de verdad que está la orden para ti.",ini:"53:46.840",fin:"54:47.700",dur:"60.9 s",
+porque:["Curiosidad: Conecta la misión del podcast con la del invitado.","Emoción: Sentido de comunidad y apertura de puertas.","Retención: Cierre cálido y profesional."],
+estructura:["Hook: El podcast como una ventana para compartir historias.","Desarrollo: Alinear la misión del espacio con inspirar a otros.","Cierre: Agradecimiento sincero."],
+trans:`Yo siento que este espacio es tan bueno como mis invitados, o sea de verdad yo me alegro demasiado cuando tengo invitados como tú y que la conversación fluye tan buena porque siento que hay mucho valor que se le puede transmitir a la gente. Y esto es una ventana y de verdad que está la orden para ti, para cualquier otra persona que sepas que tiene una historia también buena por contar. La idea de este espacio es, tal como la misión de tu empresa, es expandir los horizontes y darle más, más, sí, la oportunidad básicamente a otras personas que cuenten su historia, no solamente para que les dé alcance a ellos, sino para que también, para inspirar a otros que puedan estar, lo que tú decías, en una posición inferior, en una superior, que estén buscando conectar o lo que sea, cualquiera que sea el caso. Pero la intención acá también es darle la oportunidad a esas personas que realmente tienen una historia buena. Así que completamente a tu orden y de nuevo thank you so much por contar tu experiencia y por todo el tiempo que nos has dedicado.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT.`},
+
+/* ================= EP55 · MIXTOS ================= */
+{id:"M01",lot:"ep55",cat:"Mixto",tipo:"Filosofía / Reflexión",titulo:"El patrimonio inalienable del migrante",hook:"La educación es el pasaporte hacia el futuro, porque el mañana pertenece a quienes se preparan para él.",ini:"00:03.160",fin:"00:55.000",dur:"51.8 s",
+porque:["Curiosidad: Valida la cita de Malcolm X y la lleva al terreno del migrante.","Emoción: Orgullo y resiliencia ante la pérdida de fronteras físicas.","Retención: El conocimiento te acompaña y te representa donde estés."],
+estructura:["Hook: Cita de Malcolm X sobre la educación.","Desarrollo: La educación como patrimonio que sobrevive a la migración.","Cierre: El conocimiento es lo único que va contigo hasta el final."],
+trans:`La educación es el pasaporte hacia el futuro porque el mañana pertenece a quienes se preparan para él, hoy, Malcolm X. ¿Qué te parece? Increíble frase y me parece increíble comenzar de esta manera porque sin duda creo que la conversación de hoy va a estar súper interesante. Para mí la educación ha sido el norte o ese norte que siempre ha estado en mi vida, bueno, inclusive después de ya casi más de 12 años estudiando, pero creo que la educación es algo que no tiene fronteras, es algo que nadie te puede quitar, que siempre lo vas a tener aquí y eso es algo con lo que siempre crecí independientemente de en dónde vivas, a dónde te mudes, de lo que hagas, ese conocimiento nadie te lo puede quitar y creo que es una de las pocas cosas que va contigo básicamente hasta el día que te mueras, quién eres y lo que sabes. Oye, qué poderosa reflexión esa, me encanta, me encanta porque estoy completamente de acuerdo, es algo que nadie te puede quitar, una de las pocas cosas creo que realmente se quedan con nosotros.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"M02",lot:"ep55",cat:"Mixto",tipo:"Reflexión / Negocio",titulo:"La acreditación no es negociable",hook:"Yo nunca dejaría que un mecánico me sacara una muela.",ini:"06:35.720",fin:"07:28.000",dur:"52.3 s",
+porque:["Curiosidad: Analogía extrema y gráfica que detiene el scroll.","Emoción: Sentido común aplicado a la formación profesional.","Retención: Frase lapidaria que redefine el valor de la universidad."],
+estructura:["Hook: Analogía del mecánico y la muela.","Desarrollo: Lo absurdo de confiar en alguien sin formación.","Cierre: La universidad no te hace, tú haces la universidad."],
+trans:`Además que yo nunca dejaría que un mecánico me sacara una muela. Pues espero, vamos a estar claros, o sea yo siento que ahí a mí me encanta filosofar y yo disfruto mucho e incluso me gusta debatir con personas que tengan ideas contrarias, pero es que hay veces que yo lo llevo a la versión más simple, o sea es como que dejarías que un, no sé, un gimnasta te saque una muela. O sea, no quiere decir que no pueda, es que no tiene el conocimiento y no tiene la acreditación. Y como confiar en algo que es absurdo, es como que vas a dejar que alguien te haga una operación de corazón abierto si no es un médico profesional. O sea, es delicado cuando lo ves así, es como que blanco y negro, ¿sabes? Totalmente. Y también, pero también hay otra cosa, lo que tú dices de debatir como con ideas digamos contrarias, hay algo que también pasa mucho y es que hay un un gran malentendido también con la universidad y es que la gente piensa que por haber ido a la universidad eres un buen profesional o eres un o eres súper inteligente o eres muy bueno en lo que haces y no necesariamente.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"M03",lot:"ep55",cat:"Mixto",tipo:"Historia",titulo:"Transición y propósito EdTech",hook:"Conmigo, la doctora Amanda Vicari, lo dije bien, el apellido, perfecto, perfecto, perfecto, estoy mejorando.",ini:"19:08.940",fin:"19:59.960",dur:"51.0 s",
+porque:["Curiosidad: Presentación formal con autoridad y un toque humano.","Emoción: Orgullo por la trayectoria y el impacto en 1500 odontólogos.","Retención: Resume quién es ella y qué hace su empresa en un minuto."],
+estructura:["Hook: Presentación formal de Amanda.","Desarrollo: Trayectoria académica y el impacto de 123INBDE.","Cierre: La misión de democratizar oportunidades."],
+trans:`Conmigo, la doctora Amanda Vicari, lo dije bien, el apellido, perfecto, perfecto, perfecto, estoy mejorando. ¿Es italiano? Italiano, italiana 100%. Excelente, excelente, estoy practicando porque tengo muchos amigos italianos y cada vez que siempre les pregunto palabras para ver si lo estoy haciendo bien, entonces yo me meto en la cabeza de que estoy aprendiendo, pues sabes, es un pensamiento positivo de que voy a aprender. Pero bueno, conmigo la doctora Amanda Vicari es odontóloga venezolana, emprendedora y fundadora de una compañía EdTech enfocada en ayudar a odontólogos internacionales a revalidar sus carreras en Estados Unidos. Es founder y CEO de 123 INBDE, plataforma creada en 2019 que ha impactado a más de 1500 odontólogos hispanohablantes combinando entrenamiento académico, mentoría y tecnología. Actualmente lidera INBDE ProLab, un sistema de entrenamiento inteligente que integra simulación, analítica de rendimiento y aprendizaje basado en evidencia para optimizar resultados.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"M04",lot:"ep55",cat:"Mixto",tipo:"Negocio",titulo:"Espacios que hablan del cómo",hook:"Estos espacios que estás creando son invaluables. No muchas veces se habla a tanta profundidad.",ini:"53:03.240",fin:"53:56.000",dur:"52.8 s",
+porque:["Curiosidad: Elogio genuino al formato del podcast.","Emoción: Valoración de la profundidad sobre la superficialidad.","Retención: Se habla del 'cómo' llegar al resultado."],
+estructura:["Hook: Valoración de los espacios de conversación profunda.","Desarrollo: Finanzas vs. los otros ámbitos del éxito.","Cierre: La gente subestima el proceso."],
+trans:`Estos espacios que estás creando son invaluables. Pienso que el hecho de dar este tipo de información que creo que al igual que la revalida de cierta forma no muchas veces se habla a tanta profundidad o tal vez por no existir como espacios para hablar sino nada más del ámbito solamente financiero, el modelo de negocio como tal, pero no de los otros ámbitos que también te hacen exitoso o te llevan a ser exitoso o ser emprendedor o crear tu propia compañía o lograr las cosas que quieres lograr. Que creo que es lo que la gente subestima: la gente siempre quiere el resultado, pero no muchas veces está dispuesta a escuchar el cómo llegar al resultado porque no es gratis, no es algo que es de la noche a la mañana, tiene su, digamos, acción y repercusión básicamente, cada acción que tomas en tu vida. Pero este tipo de espacios de verdad me parece invaluable, me parece increíble el proyecto que estás haciendo y sé que te va a ir increíble porque estás aportando muchísimo valor y eso en realidad es lo que las personas necesitan porque hay mucho contenido pero no necesariamente contenido de valor.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"M05",lot:"ep55",cat:"Mixto",tipo:"Reflexión",titulo:"La energía del summit",hook:"Fue la energía que se respiró ahí, con el hecho de saber que había tanta gente apostando por Venezuela.",ini:"48:39.640",fin:"49:30.000",dur:"50.4 s",
+porque:["Curiosidad: Conexión emocional con la diáspora y el orgullo nacional.","Emoción: La autosuficiencia puede ser aislante.","Retención: Conectar con otros te recarga para seguir creando."],
+estructura:["Hook: La energía de ver a tanta gente aportando por Venezuela.","Desarrollo: Ser autosuficientes a veces aísla.","Cierre: Conversar con otros abre puertas y recarga."],
+trans:`Fue la energía que se respiró ahí con el hecho de saber que había tanta gente apostando y aportando por o para Venezuela de alguna manera, o sea representando Venezuela y con proyectos que tú dices wow, o sea es una cosa increíble que por lo menos a mí me cargó de una energía bárbara. No sé cuál fue tu apreciación. Sí, totalmente. Y por ejemplo, de lo que estábamos hablando también, el hecho de que hemos sido self-sufficient y básicamente on our own en el 100%, hace que aún siendo emprendedores sea un poco como aislante de cierta forma, porque no nos relacionamos constantemente con otros emprendedores como de repente vimos en el summit que había muchas personas que ya se conocían, que me parece increíble. Pero eso me abrió más los ojos a el tema de que de repente no necesitas para levantamiento de capital en este momento lo que sea, pero sí el conversar, por ejemplo lo que haces en el podcast, conversar con otras personas que estén en la misma posición que tú o mucho más adelante que tú o empezando como tú lo estabas haciendo y ver distintas perspectivas.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"M06",lot:"ep55",cat:"Mixto",tipo:"Aprendizaje",titulo:"El proceso vs el resultado",hook:"La gente siempre quiere el resultado, pero no muchas veces está dispuesta a escuchar el cómo, porque no es gratis.",ini:"53:36.200",fin:"54:28.000",dur:"51.8 s",
+porque:["Curiosidad: Frase contundente que desafía la cultura del atajo.","Emoción: Realidad cruda sobre el esfuerzo.","Retención: Cada acción tiene su repercusión."],
+estructura:["Hook: La obsesión con el resultado sin querer el proceso.","Desarrollo: No es gratis ni de la noche a la mañana.","Cierre: Cada acción tiene su repercusión."],
+trans:`La gente siempre quiere el resultado, pero no muchas veces está dispuesta a escuchar el cómo llegar al resultado porque no es gratis, no es algo que es de la noche a la mañana, tiene su, digamos, acción y repercusión básicamente, cada acción que tomas en tu vida. Pero este tipo de espacios de verdad me parece invaluable, me parece increíble el proyecto que estás haciendo y sé que te va a ir increíble porque estás aportando muchísimo valor y eso en realidad es lo que las personas necesitan porque hay mucho contenido pero no necesariamente contenido de valor. Entonces creo que eso es algo que que me parece increíble que estés haciendo. Así que mil gracias por la invitación y súper agradecida por esta conversación que tuvimos. Para mí un placer y gracias por esas palabras. Y bueno, yo siento que este espacio es tan bueno como mis invitados, o sea de verdad yo me alegro demasiado cuando tengo invitados como tú y que la conversación fluye tan buena porque siento que hay mucho valor que se le puede transmitir a la gente.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"M07",lot:"ep55",cat:"Mixto",tipo:"Filosofía",titulo:"De la autosuficiencia a la inspiración",hook:"El hecho de que hemos sido self-sufficient al cien por ciento hace que, aún siendo emprendedores, sea un poco como aislante.",ini:"48:50.000",fin:"49:41.000",dur:"51.0 s",
+porque:["Curiosidad: El lado oscuro de la autosuficiencia.","Emoción: La necesidad humana de conexión.","Retención: Sentirse apoyado e inspirado abre puertas."],
+estructura:["Hook: La autosuficiencia como aislante.","Desarrollo: No necesitas capital para necesitar conectar.","Cierre: Salir recargado para seguir creando."],
+trans:`El hecho de que hemos sido self-sufficient y básicamente on our own en el 100%, hace que aún siendo emprendedores sea un poco como aislante de cierta forma, porque no nos relacionamos constantemente con otros emprendedores como de repente vimos en el summit que había muchas personas que ya se conocían, que me parece increíble. Pero eso me abrió más los ojos a el tema de que de repente no necesitas para levantamiento de capital en este momento lo que sea, pero sí el conversar, por ejemplo lo que haces en el podcast, conversar con otras personas que estén en la misma posición que tú o mucho más adelante que tú o empezando como tú lo estabas haciendo y ver distintas perspectivas y sentirte supported y sentirte apoyado y sentirte inspirado, siento que te abre mucho, mucho las puertas, pero también sales recargado para seguir, para seguir trabajando y seguir creando. Y me encantó, para mí era una faceta que nunca había experimentado en el sentido de una, una conferencia, siempre he ido a miles de conferencias odontológicas y es completamente distinto, pero fue mi primera vez como en una conferencia de emprendimiento específicamente.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT.`},
+
+/* ================= WEBINAR ================= */
+{id:"W01",lot:"webinar",cat:"Pamela + Joc",tipo:"Mindset / Empatía Estratégica",titulo:"El Motor Apagado (Tu cliente también está estancado)",hook:"Quiero que se imaginen que su negocio es un carro. Van tranquilamente en la vía, y de repente el motor se apaga de la nada.",ini:"00:15:49 (Pamela) / 00:45:52 (Joc)",fin:"00:19:16 / 00:48:51",dur:"~60 s (compuesto)",
+porque:["Táctica accionable: La analogía visual del carro varado retiene de inmediato.","Cambio de paradigma: Obliga a empatizar con el 'pain point' del cliente.","Cierre contundente: 'El que resuelva el problema se lleva el dinero'."],
+estructura:["Hook: La analogía del carro que se apaga.","Desarrollo: El cliente también está varado buscando un mecánico.","Cierre: El dinero sigue a la solución de problemas."],
+trans:`(Pamela) Quiero que se imaginen que su negocio es un carro. Van tranquilamente en la vía, todo va bien, y de repente el motor se apaga de la nada. Ya venías generando ingresos y de repente hay un bloqueo. Sientes que no estás cerrando ventas. La finalidad no es que esto no ocurra nunca, sino saber identificar qué está causando ese bloqueo, cómo repararlo, recalcular como con el GPS y volver al camino. (Joc) Así como nosotros nos sentimos frustrados y estancados, imagínense quién también se siente así... Sus clientes también tienen problemas. Si nosotros nos enfocamos en nuestros propios bloqueos, ¿cómo pretendemos ayudar a la persona que nos va a comprar? Si volteamos la ecuación y pensamos en el problema del cliente, se nos va a hacer más simple resolverlo. Y adivinen quién se lleva el dinero: el que resuelva el problema.`,
+nota:`Edición compuesta de 2 bloques temáticos. No se añadieron frases. Source alignment: EXACT.`},
+
+{id:"W02",lot:"webinar",cat:"Pamela + Joc",tipo:"Neuro-Marketing / Retención",titulo:"El Síndrome del Impostor vs. La Anticipación",hook:"Empiezas a caer en este ciclo de dudas, de miedos, del famoso síndrome del impostor.",ini:"00:23:03 (Pamela) / 01:14:22 (Joc)",fin:"00:23:59 / 01:15:49",dur:"~55 s (compuesto)",
+porque:["Validación emocional: Describe los síntomas físicos del síndrome del impostor.","Reencuadre ético: Usar ganchos no es manipular si el producto ayuda.","Base neurocientífica: Dopamina y anticipación como motores de viralidad."],
+estructura:["Hook: La vocecita que te dice que vendes muy caro.","Desarrollo: La anticipación como emoción #1 para retener.","Cierre: Justificación ética de usar marketing para ayudar."],
+trans:`(Pamela) Empiezas a caer en este ciclo de dudas, de miedos, del famoso síndrome del impostor. Esa vocecita que te juega en contra y te dice: "esto es terrible, esta idea ya no funciona, estás vendiendo muy caro, ya esto no le importa a nadie". Te preocupas tanto que no duermes bien, sientes tensión corporal y la cabeza no para de darle vueltas a todo lo negativo. (Joc) La emoción número uno que hace que un contenido retenga atención y se vuelva viral es la anticipación. Genera un rush de dopamina. ¿Qué pasa si usamos eso a nuestro favor? Y ojo, no para manipular. Si tienes un producto que de verdad funciona y ayuda a la gente, no estás manipulando, estás ayudando. Usamos esos ganchos y esa anticipación para hacerlos pensar y razonar por qué lo que ofreces es exactamente lo que necesitan.`,
+nota:`Edición compuesta de 2 bloques temáticos. Source alignment: EXACT.`},
+
+{id:"W03",lot:"webinar",cat:"Pamela + Joc",tipo:"Cierre de Ventas / Seguimiento",titulo:"Bájale al Ego y el Follow-up Empático",hook:"Hay que bajarle el volumen al ego, porque el ego siempre te va a decir: si ese cliente no te compró es culpa de él.",ini:"00:36:09 (Pamela) / 01:37:23 (Joc)",fin:"00:36:38 / 01:38:20",dur:"~45 s (compuesto)",
+porque:["Ataca el ego: El principal enemigo de las ventas.","Ejemplo brutal: El follow-up usando el nombre de la hija del cliente.","Filosofía: 'Trabajar por los decentes'."],
+estructura:["Hook: El ego te dice que la culpa es del cliente.","Desarrollo: Perseguir vs. seguimiento empático.","Cierre: Asumir que la mayoría de las personas son decentes."],
+trans:`(Pamela) Reconocer que hay un problema es el primer paso. Hay que bajarle el volumen al ego, porque el ego siempre te va a decir: "tú lo haces todo perfecto, si ese cliente no te compró es culpa de él, no vio tu valor". Hay que bajarle el volumen a eso y reconocer: por aquí no estoy siendo claro sobre para quién es esto que vendo, y más importante, para quién NO es. (Joc) Y eso cambia los seguimientos. No es lo mismo escribirle: "oye, recuerda que estoy por acá, a ver si todavía quieres mi servicio". No, eso es perseguir. Ahora, si tú le preguntaste por qué lo necesitaba y le dices: "Señor, recuerdo que me contó lo de su hija, no quisiera que se quedaran con ese problema, yo le guardo el cupo". Conectaste en un plano personal. La mayoría de las personas son decentes, y nosotros tenemos que trabajar por los decentes.`,
+nota:`Edición compuesta de 2 bloques temáticos. Source alignment: EXACT.`},
+
+{id:"W04",lot:"webinar",cat:"Pamela + Joc",tipo:"Gestión de Expectativas / Foco",titulo:"La dura verdad: Tu familia NO es tu cliente",hook:"Hay una frase que es como una pequeña cachetada de realidad: tus amigos y tu familia no son tu cliente.",ini:"01:40:56 (Pamela) / 01:18:36 (Joc)",fin:"01:41:50 / 01:19:34",dur:"~50 s (compuesto)",
+porque:["Liberación de culpa: El 'círculo cero' no tiene que apoyarte.","Redirección de energía: Enfocarse en quien tiene la tarjeta.","Claridad: 'No somos para todo el mundo'."],
+estructura:["Hook: La cachetada sobre familia y amigos.","Desarrollo: Por qué el círculo cero no compra.","Cierre: Enfocarse en quien sí te va a pagar."],
+trans:`(Pamela) Hay una frase que es como una pequeña cachetada de realidad: que tus amigos y tu familia no son tu cliente. El pensamiento automático al iniciar es: "los primeros que me van a comprar son las personas en mi entorno". Y cuando eso no sucede, uno llega a experimentar esa inseguridad de "estoy haciendo algo mal". Tenemos que entender que eso no significa que te quieren menos, ni que lo que vendes vale menos. Es que sencillamente no es para ellos. (Joc) No somos para todo el mundo. Y tenemos que entender eso y sentirnos bien con ello. ¿En quién nos tenemos que enfocar? ¿Cuál es la opinión que de verdad nos interesa? ¿El que no nos va a pagar o el que sí? La gente que me va a pagar me necesita. A ellos les voy a hablar, porque lo que quieren saber es que yo tengo una solución que los va a ayudar.`,
+nota:`Edición compuesta de 2 bloques temáticos. Source alignment: EXACT.`},
+
+{id:"W05",lot:"webinar",cat:"Pamela + Joc",tipo:"Herramientas / Neuroplasticidad",titulo:"El Blog de Evidencia (Reprogramar la mente)",hook:"Tu mente constantemente está buscando evidencia de que eso que cree es cierto.",ini:"01:46:34.894",fin:"01:47:58.378",dur:"83.5 s",
+porque:["Táctica accionable: El 'Log de Evidencia' como antídoto al impostor.","Base neurocientífica: El cerebro busca confirmar sesgos.","Cambio de paradigma: De suplicar a certeza absoluta."],
+estructura:["Hook: El ejercicio diario para vencer el enfoque en la carencia.","Desarrollo: La mente busca data para confirmar la narrativa.","Cierre: El impacto de esta seguridad en el pitch."],
+trans:`(Pamela) Tu mente constantemente está buscando evidencia de que eso que cree es cierto. Entonces, ¿qué pasa? Si mi mente en este momento está creyendo la narrativa de que eso que yo ofrezco no tiene valor, automáticamente lo que mi mente va hacer es buscar toda evidencia de que eso es cierto. Lo que este log de evidencia hace es reprogramar tu mente para que empiece a buscar evidencia de que sí hay valor, de que sí tienes clientes, y pasar de sentirte inseguro a sentirte confiado. (Joc) O sea, literalmente, con algo tan sencillo como pensar diferente y tomar acción por más pequeño que sea, ya están cambiando su realidad. Si ustedes se detienen a hacer el ejercicio, ustedes están reprogramando su cabeza, reprogramando esas neuronas para que empiecen a pensar en la solución. Esa es la manera en que se desbloquea cualquier situación, especialmente si nuestro bloqueo es con las ventas.`,
+nota:`Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"W06",lot:"webinar",cat:"Joc + Pamela",tipo:"Psicología de Precios / Premium",titulo:"El café de 100 dólares que nadie compraba",hook:"Nosotros tuvimos un caso que era un café de especialidad muy caro. Un kilo costaba casi 100 dólares.",ini:"02:02:03.820",fin:"02:05:21.260",dur:"197.4 s (edición ~50 s)",
+porque:["Rompe creencias: Bajar el precio no atrae más clientes.","Psicología: El cerebro asocia 'barato' con 'baja calidad'.","Caso real: El café de especialidad da credibilidad."],
+estructura:["Hook: El café que no se vendía por ser 'demasiado barato'.","Desarrollo: Comparación con la competencia.","Cierre: Ser el más barato te hace ver defectuoso."],
+trans:`(Joc) Nosotros tuvimos un caso que era un café de especialidad muy caro. Un kilo costaba casi 100 dólares. Y nosotros lo vendíamos casi que al costo y tenía una imagen no tan premium. Y eso no nos funcionaba. Porque otras marcas que sí tenían una visual mucho más exclusiva y tenían el mismo café, ellos lo tenían en 200. Ellos tenían miles de compras y nosotros teníamos cientos. (Pamela) Si no me están comprando es porque lo estoy vendiendo muy caro, entonces lo tengo que bajar... Y de repente estas cinco marcas están en el rango de 100 dólares y hay una que está en 35. Hay muchas personas que lo ven como: "Porque la mayoría está acá y lo tuyo está acá abajo, a ti te tiene que estar faltando algo. Entonces a ti más bien te descarto".`,
+nota:`Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"W07",lot:"webinar",cat:"Joc",tipo:"Reencuadre de Necesidades / Lujo",titulo:"El 'problema' de comprar un Rolex",hook:"Los problemas son subjetivos. Si alguien va a comprar un Rolex, esa persona igual tiene problemas.",ini:"02:00:35.054",fin:"02:01:05.290",dur:"30.2 s",
+porque:["Eleva el nivel: Venderle a mercados High Ticket.","Reencuadre: El estatus como problema legítimo.","Aplicación: Triggers psicológicos de los comerciales de lujo."],
+estructura:["Hook: El ejemplo del Rolex.","Desarrollo: El estatus como 'pain point'.","Cierre: Conocer los triggers de tu nicho."],
+trans:`(Joc) Los problemas son subjetivos. Si alguien va a comprar un Rolex, esa persona igual tiene problemas, tiene necesidades. El estatus es un problema para esa persona. La percepción que tiene de sí mismo para ir a un evento es un problema. La sensación de bajarse de un carro deportivo y tener el reloj que se vea cuando va a agarrar una copa, es su percepción del problema. Entonces, ¿cómo hacemos para transmitir la solución? Lo puedes hacer muy sutilmente. En los comerciales de perfumes, de relojes, dan esos triggers psicológicos con la cámara. Al final sí estamos solucionando un problema, pero tenemos que conocer tanto a nuestros clientes que sepamos qué es lo que hace que se muevan.`,
+nota:`Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"W08",lot:"webinar",cat:"Joc",tipo:"Storytelling / Objeciones",titulo:"La fruta en el desierto (Vende la necesidad)",hook:"El otro día estaba haciendo un calor horrible en Miami y había una gente vendiendo frutas.",ini:"00:48:55.350",fin:"00:50:57.230",dur:"121.8 s (edición ~45 s)",
+porque:["Storytelling cotidiano: Fácil de visualizar.","Destruye objeciones: No necesitas vender características técnicas.","Foco en el cliente: Del discurso del vendedor al del comprador."],
+estructura:["Hook: La mejor fruta de mi vida en un día de calor.","Desarrollo: La fruta era normal, la necesidad era extrema.","Cierre: Vende la solución al calor, no la biotecnología."],
+trans:`(Joc) El otro día estaba haciendo un calor horrible en Miami y había una gente vendiendo frutas. Cuando la compré dije: "oye, qué brutal se siente esto, es la mejor fruta que he probado en mi vida". ¿Ustedes creen que esas frutas eran diferentes a las del supermercado? No. Me vendieron la necesidad. No hace falta que la persona me diga: "oye, esta piña la trajimos del Congo con biotecnología". A mí no me interesa. Mi necesidad claramente es el calor. Dame las frutas. Si nosotros nos detenemos a pensar por qué el cliente toma la decisión, todo se vuelve más simple.`,
+nota:`Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"W09",lot:"webinar",cat:"Joc",tipo:"Ventas B2B / Descubrimiento",titulo:"No vendas características, pregunta el 'Por qué'",hook:"Si yo vendo automatizaciones y un negocio me dice 'quiero automatizar', no les voy a decir las especificaciones.",ini:"01:22:18.638",fin:"01:25:07.018",dur:"168.3 s (edición ~55 s)",
+porque:["Roleplay implícito: Una pregunta destapa un dolor de miles de dólares.","Anti-vendedor técnico: Se burla de la métrica de vanidad.","Transición a cierre: Cuantificar la pérdida."],
+estructura:["Hook: El error de vender características técnicas.","Desarrollo: Preguntar '¿por qué?' y cuantificar la pérdida.","Cierre: Escuchar vs. empujar un producto."],
+trans:`(Joc) Si yo vendo automatizaciones y un negocio me dice "quiero automatizar", yo no les voy a decir "mira, tengo una automatización que manda 800 caracteres por segundo". A nadie le importa. Les voy a preguntar: ¿por qué quieres automatizar? "Porque mis clientes se sienten frustrados, no responden". Ah, ok, entonces tú lo que quieres es evitar que un montón de clientes sientan que no son atendidos. ¿Cuántos clientes sientes que se te han ido esta semana? "Mira, 50". ¿Y a cuánto? "A 100 dólares". O sea, se te está yendo un dineral. No estoy empujando, estoy escuchando y asegurándome de que mi solución realmente le funciona.`,
+nota:`Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"W10",lot:"webinar",cat:"Joc",tipo:"Retención / Copywriting",titulo:"El Elevator Pitch de 3 Segundos",hook:"Si ustedes logran enganchar en los primeros 3 a 5 segundos, la posibilidad de que se retengan es mayor.",ini:"01:02:07.470",fin:"01:04:20.914",dur:"133.4 s (edición ~40 s)",
+porque:["Regla de oro: La realidad de los algoritmos (3-5 segundos).","Cambio de concepto: Reemplaza 'vender' por 'implantar una idea'.","Gatillos mentales: Curiosidad, frustración, nostalgia."],
+estructura:["Hook: La regla de los 3 a 5 segundos.","Desarrollo: Hablar de ti mismo es el error #1.","Cierre: Implantar una idea usando emoción."],
+trans:`(Joc) Si ustedes logran enganchar en los primeros 3 a 5 segundos, la posibilidad de que se retengan es mayor. Si empiezan a hablar de sí mismos o de su producto, no lo van a ver más. ¿Cómo hago para vender mi producto en 3 segundos? Bueno, no lo vas a vender. Lo que vamos a hacer es implantar una idea. Porque vender también es empujar. ¿Cómo vamos a implantar una idea? Con curiosidad, con interés, con frustración, con nostalgia. Hay ciertas palabras que hacen un efecto en la otra persona para que sienta eso y se detenga a escuchar.`,
+nota:`Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"W11",lot:"webinar",cat:"Joc",tipo:"Viralidad / Estructura",titulo:"Hooks que compran atención",hook:"El primer hook: 'Pensé que esto era imposible hasta que lo intenté'. Eso genera curiosidad.",ini:"01:04:49.108",fin:"01:07:28.162",dur:"159.0 s (edición ~45 s)",
+porque:["Meta-Hook: Usa un hook mientras explica qué es un hook.","Plantillas listas: Frases exactas para copiar y pegar.","Contraste: Emoción humana vs. especificaciones técnicas."],
+estructura:["Hook: El ejemplo 'Pensé que esto era imposible'.","Desarrollo: Las emociones que disparan (miedo, intriga).","Cierre: La irrelevancia de los 'superpoderes' técnicos."],
+trans:`(Joc) Por ejemplo, el primer hook: "Pensé que esto era imposible hasta que lo intenté". Eso genera curiosidad, hemos comprado atención. Fíjense en este otro: "Este es el error número uno que mantiene estancado a todos los dueños de negocio". ¿Qué emoción estamos disparando ahí? Miedo, curiosidad, intriga. No hace falta decir que tienes una cámara de 18924 píxeles. A nadie le importa. No se trata de vender los superpoderes de nosotros, se trata de hacer que la gente piense por qué lo que nosotros estamos haciendo tiene sentido para ellos.`,
+nota:`Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"W12",lot:"webinar",cat:"Joc",tipo:"Métricas de Vanidad / Conversión",titulo:"Seguidores NO es igual a Clientes",hook:"He tenido clientes con mil seguidores que en ventas han tenido 10.000 dólares.",ini:"00:57:15.092",fin:"00:59:35.466",dur:"140.3 s (edición ~45 s)",
+porque:["Alivio de ansiedad: Libera de la obsesión por likes.","Ejemplo cotidiano: El restaurante que compras pero no sigues.","Foco en conversión: Solucionar problemas."],
+estructura:["Hook: Cliente con mil seguidores y 10.000 dólares.","Desarrollo: Compra impulsiva vs. seguimiento.","Cierre: Seguidores no es igual a clientes."],
+trans:`(Joc) Yo he tenido clientes que han tenido una cantidad de seguidores reducida, digamos mil seguidores, y en ventas han tenido 10.000 dólares. ¿De dónde salió este poco de gente? Eso ocurre cuando nuestros esfuerzos están dirigidos hacia conseguir clientes y no necesariamente a que nos sigan per se. Las compras son muy impulsivas. A mí me ha pasado, he comprado comida de restaurantes que no sigo porque simplemente no me interesa ver lo que ponen todos los días, pero me gusta su comida. Seguidores no es igual al cliente. La importancia aquí es solucionar el problema que ellos tengan.`,
+nota:`Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"W13",lot:"webinar",cat:"Joc",tipo:"Branding / Disrupción",titulo:"El caso Liquid Death (Vender Status)",hook:"El agua Liquid Death. Están vendiendo fucking agua. Y están compitiendo contra marcas de 700 mil años.",ini:"01:56:08.734",fin:"01:58:11.136",dur:"122.4 s (edición ~50 s)",
+porque:["Caso de estudio real: Extremo y reconocible.","Lección de branding: No necesitas inventar un producto, solo narrativa.","El poder del contraste: La confusión genera retención."],
+estructura:["Hook: Vender 'fucking agua' contra gigantes.","Desarrollo: Vender status y rebeldía.","Cierre: La confusión como herramienta para comprar atención."],
+trans:`(Joc) Te voy a dar un ejemplo muy bueno que hizo una disrupción del mercado. El agua Liquid Death. Están vendiendo fucking agua. Y están compitiendo contra marcas que tienen 700 mil años. Liquid Death dijo: "No. Nosotros vamos a hacer algo disruptivo". Su propuesta de valor era atacar el plástico. Pero en vez de irse del lado del conservacionismo aburrido, dijeron: "Vamos a hacer algo súper cool y vamos a vender status". Lo que empezaron a vender fue lo cool que es Liquid Death. El contraste de Liquid Death y es agua. Pensaba que era un energy drink. No entiendo, no lo proceso. Me detengo. La atención es lo que te da opción a comprar.`,
+nota:`Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"W14",lot:"webinar",cat:"Joc",tipo:"Ética en Ventas / Abundancia",titulo:"El poder de decirle NO a un cliente",hook:"Se puede dar el caso de que te encuentres con un cliente que no necesita tu servicio. Y está bien que le digas que no.",ini:"01:26:19.274",fin:"01:28:55.276",dur:"156.0 s (edición ~55 s)",
+porque:["Contraintuitivo: Rechazar una venta genera confianza extrema.","Integridad como marketing: Referidos a largo plazo.","Ejemplo práctico: Rechazar automatización sin tráfico."],
+estructura:["Hook: Por qué es rentable decir NO.","Desarrollo: El roleplay de rechazar la venta.","Cierre: 'Llama a fulano, que el pan es bueno'."],
+trans:`(Joc) Se puede dar el caso de que te encuentres con un cliente que no necesita tu servicio. Y está bien que le digas que no. ¿Por qué? Porque ahí estás haciendo algo que es mentalidad de abundancia: estás conservando tu integridad. Si viene alguien y me dice "quiero automatizar porque es el futuro", pero solo tiene dos conversaciones al día, le digo: "mira, primero enfócate en aumentar las conversaciones". Está bien que le digas que no. Eventualmente esa persona va a decir: "oye, fulano tiene integridad, se tomó el tiempo de guiarme". Y el día de mañana, cuando se encuentre con alguien que sí necesita esto, va a decir: "llama a fulano, que el pan es bueno".`,
+nota:`Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"W15",lot:"webinar",cat:"Joc",tipo:"Ventas / Seguimiento",titulo:"Deja de tener miedo al Follow-up",hook:"Tenemos miedo de que la gente lo sienta como invasivo. Newsflash: Nadie está viviendo a través de sus ojos.",ini:"01:28:55.276",fin:"01:30:47.296",dur:"112.0 s (edición ~45 s)",
+porque:["Destruye el ego: Ataca el 'síndrome del protagonista'.","Autorización moral: Permiso para enviar el seguimiento.","Filtro de audiencia: Si piden que dejes de escribir, los sacas."],
+estructura:["Hook: El miedo a ser invasivo.","Desarrollo: Nadie está pensando en ti tanto como crees.","Cierre: Esfuerzos por las personas que nos necesitan."],
+trans:`(Joc) Carlos tuvo un problema con los follow ups. Y esto viene de las inseguridades: tenemos miedo de que la gente lo sienta como invasivo, de que digan que somos fastidiosos. "Oye, pero ya le escribí una vez, ¿será que le escribo mañana?". Newsflash: Nadie está viviendo a través de sus ojos. La gente está ocupada, está viviendo sus días, haciendo mil vainas. Si hacen seguimiento y alguien les dice que les dejen de escribir, chévere, lo sacas de la lista. ¿Quién me interesa? El que me responde que sí. "Gracias por escribirme, se me había olvidado". Los esfuerzos los tenemos que hacer por las personas que nos necesitan.`,
+nota:`Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"W16",lot:"webinar",cat:"Joc",tipo:"Técnica de Ventas / Retail",titulo:"No les vendan. Pregunten. (Técnica NEPQ)",hook:"¿Cómo hago que la persona baje la guardia? No les vendan. Pregunten.",ini:"01:31:46.934",fin:"01:33:32.478",dur:"105.5 s (edición ~50 s)",
+porque:["Cambio de rol: De vendedor que empuja a asesor que descubre.","Escenario universal: La tienda de dulces.","Crítica: 'Se sientan a tomar pedidos, no están vendiendo'."],
+estructura:["Hook: Técnica NEPQ para bajar la guardia.","Desarrollo: Roleplay guiando a la niña indecisa.","Cierre: Tomar pedidos vs. vender de verdad."],
+trans:`(Joc) ¿Cómo hago que la persona baje la guardia? No les vendan. Pregunten. "Hola señor, ¿qué los trae por acá?". "No es que mi hija vino y quiere esto pero no sabe lo que...". "Ah, ok, no sabe lo que quiere. A ver, qué es que normalmente le guste, chocolate, vainilla". "Hija, a ver, ¿qué es lo que quiere? Ay, no sé". "Mira, te voy a traer tres opciones de varios colores. A ver cuál te gusta más. ¿Te parece?". Termina escogiendo uno. Pero yo no asumí. ¿Qué es lo que tienden a hacer estas personas en las tiendas? Nada. Se sientan ahí y esperan tomar pedidos. No están vendiendo.`,
+nota:`Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"W17",lot:"webinar",cat:"Joc",tipo:"Mindset / Motivación",titulo:"Persistencia Delusional (Mente Ganadora)",hook:"Lo que diferencia a un perdedor de un ganador es simplemente volverlo intentar.",ini:"00:53:27.264",fin:"00:55:15.790",dur:"108.5 s (edición ~45 s)",
+porque:["Palabra disruptiva: Redefine 'delusional' como virtud.","Autoridad prestada: Jordan, Serena, Schumacher.","Reflexión: El humano puede aprender de sus tropiezos."],
+estructura:["Hook: La diferencia entre perdedor y ganador.","Desarrollo: La persistencia delusional de los grandes atletas.","Cierre: Levantarse de la misma piedra."],
+trans:`(Joc) Fíjense, lo que diferencia a un perdedor de un ganador es simplemente volverlo intentar. Yo busco siempre cómo pensaba la gente que ha logrado grandes cosas. Serena Williams, Michael Jordan, Michael Schumacher... todos tienen algo en común. Que han sido persistentes hasta un punto delusional, iluso. Todos se han dicho a sí mismos: "yo voy a seguir, así me esté muriendo". Y eso es lo que cambia. No son las veces que has fracasado, son las veces que te has levantado. El ser humano es el único animal que choca con la misma piedra dos veces, pero también el único que puede razonar y ser mejor.`,
+nota:`Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"W18",lot:"webinar",cat:"Joc + Pamela",tipo:"Cierre Emocional / Comunidad",titulo:"Ojalá existiera un 'Baby Shower' para negocios",hook:"Me encantaría que hubiese un baby shower, pero para el negocio.",ini:"02:16:25.678",fin:"02:17:23.758",dur:"58.1 s",
+porque:["Analogía brillante: La soledad del emprendedor vs. celebrar un nacimiento.","Conexión emocional: Necesidad de comunidad y mentores.","Cierre perfecto: Calidez y pertenencia."],
+estructura:["Hook: La idea de un 'Baby Shower' para emprendimientos.","Desarrollo: Nadie apoya al emprendedor como a un recién nacido.","Cierre: La mentoría como 'terapia para el negocio'."],
+trans:`(Joc) Y empiece a invertir no solo en ustedes sino en su negocio hoy mismo. Sí, me encanta porque es terapia para el negocio. Yo siempre he dicho como que me encantaría que hubiese un baby shower, pero para el negocio. Todo el mundo hace los baby showers: "Bienvenido, el niño nuevo". Y en el negocio, entonces, ¿nadie la apoya? (Pamela) Totalmente. Te deberías apoyar a tu familia, a tus amigos cuando abres un negocio porque están empezando y están haciendo cosas. (Joc) Me encanta porque es terapia independientemente, se está empezando o no, es literalmente terapia para el negocio.`,
+nota:`Fragmento continuo. Source alignment: EXACT.`},
+
+/* ================= ASESORÍA · TIPS ================= */
+{id:"C01",lot:"asesoria",cat:"Tips",tipo:"Tip de Retención",titulo:"La regla de los primeros 3 segundos",hook:"Cuérdate que la gente le para a bola a los primeros tres segundos. Y después fíjate, ve estas estadísticas aquí.",ini:"21:09.870",fin:"22:21.000",dur:"71.1 s",
+porque:["Curiosidad: Desmitifica que el contenido largo retiene por sí solo.","Emoción: Urgencia al mostrar datos reales de abandono.","Retención: El inicio decide si el cliente se queda o se va."],
+estructura:["Hook: Los primeros 3 segundos.","Desarrollo: Análisis de métricas de retención (25%, 50%, 75%).","Cierre: El principio del video decide todo."],
+trans:`Bueno, exacto. Me dices que con eso están ahorrando el 20%. Eso ayuda si lo muestras en el video. Cuérdate que, Marico, la gente le para a bola a los primeros tres segundos. Y después, Marico, fíjate, ve estas estadísticas aquí. Mira el tiempo en que la gente vio el video. Esto es 25%, 50 % del video, 75, 95. En el 25 % del video tienes mayor cantidad de gente. Y mira cómo se va cayendo. O sea, de esta, el video que más resultados te produjo, que fue este. Marico, 2.000 personas vieron el 25%. Y ya, la mitad del video, ya tienes menos la mitad de las personas que lo vieron, que los primeros tres segundos. Así importantes son los, eso, ese principio del video. Y es que Marico decide una lo que quiere. ¿Sabes? Si ya es tal para jardines, mejor, el mejor evento, no sé qué. Y después dice lo que sea. Tenemos el...`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"C02",lot:"asesoria",cat:"Tips",tipo:"Tip de Ventas por Miedo",titulo:"Vende la solución al miedo (La lluvia)",hook:"Los toldos, Marico, es una excelente publicidad para hacer ahorita. Todavía nos quedan dos meses de lluvia.",ini:"23:47.640",fin:"24:51.258",dur:"63.6 s",
+porque:["Curiosidad: Conecta lluvia con oportunidad de venta inmediata.","Emoción: Toca el dolor de perder dinero por evento suspendido.","Retención: Crear urgencia usando la estacionalidad."],
+estructura:["Hook: Toldos en temporada de lluvia.","Desarrollo: Historia de evento casi arruinado.","Cierre: Oferta y urgencia estacional."],
+trans:`Ok, ok, ok. Marico, haz una lista de esas vergas, O sea, sé que se queda la dilla. Pero este son el tipo de vergas que generan billete, O sea, fíjate. Los toldos, Marico, es una excelente publicidad para hacer ahorita. Todavía nos quedan dos meses de lluvia. Urda pues. Marico, el sábado pasado nosotros tuvimos un evento y de verga lo suspenden porque estaba lloviendo y no había toldo. La típa se dio cuenta que quería el toldo el mismo día. Hasta el día anterior Jesús estaba tratando de comprar el toldo y no quiso. Y el día del evento estaba pariendo. Entonces, Marico, juega con ese miedo. No dejes que se te dañe el evento por no tener un toldo. Contrátanos en estos meses de lluvia y tienes un 20 % de descuento. De una. No dejes que tu evento se dañe por la lluvia. Es que tu evento se dañe por la lluvia o pues tu evento es demasiado especial como para que se dañe por la lluvia, por ejemplo. Contratan un toldo, le damos un 20 % de descuento, validos oro para septiembre, que todavía estamos en meses de lluvia. Septiembre y octubre. Valido para septiembre y octubre. Las lluvias se supone que lleguen hasta noviembre, pero duro por lo menos dos meses más.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"C03",lot:"asesoria",cat:"Tips",tipo:"Tip de Posicionamiento",titulo:"El poder de la frase 'Family Owned'",hook:"Hay una expresión aquí que le gusta a mucha gente, que es family-owned.",ini:"26:27.342",fin:"27:40.653",dur:"73.3 s",
+porque:["Curiosidad: Sesgo cultural de compra que pocos aprovechan.","Emoción: Orgullo de ser dueño y operador.","Retención: A los clientes les encanta ver la cara del dueño."],
+estructura:["Hook: La expresión 'family-owned'.","Desarrollo: Por qué los gringos valoran hablar con los dueños.","Cierre: Trato directo y puntualidad."],
+trans:`Yo recuerdo, por eso que yo estaba confundido, hay un video de Vicky donde ella dice eso, Y si no, pues que lo grabe. Bien sea ella o tú. Digo ella por el inglés. Aparte que es mujer, marico. Sí, la mujer ha la más que la obra. Sí, hay que aceptarlo, ¿Cómo es interesante eso? Por ejemplo, que diga, mira, estábamos 20 minutos antes de que empiece tu evento. No sé, que se invente una ahí, Pero que diga, mira, estamos aquí. Por lo menos, si lo hace en inglés, hay una expresión aquí que le gusta a mucha gente, que es family-owned. sea, los gringos es una vaina, como que family-owned es que, una familia que... Ellos mismos son los que hacen la vaina, que estás hablando con los dueños. A los gringos les gusta burro. Entonces, sí, que, somos... y familiares. Family on, puntuales, nosotros mismos vamos, te montamos y te hacemos que tu evento sea lo que tú quieras. Vas a hablar directamente con nosotros. Mierda, qué recho. Estamos hablando directamente con los dueños, vienen para acá, nos echamos ahí, nos vemos la cara. A ellos les gusta eso.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"C04",lot:"asesoria",cat:"Tips",tipo:"Tip de Optimización",titulo:"Aprender de la data y surfear la ola",hook:"Está bien, pero se puede mejorar. Por eso que yo te decía que hay que aprender de la data.",ini:"30:02.222",fin:"31:17.966",dur:"75.7 s",
+porque:["Curiosidad: Lo que funciona hoy puede no funcionar mañana.","Emoción: Empodera a dejar de adivinar y observar.","Retención: Metáfora de 'surfear las olas'."],
+estructura:["Hook: Aprender de la data.","Desarrollo: Los videos con cara funcionaron mejor.","Cierre: Estar pendiente de los cambios."],
+trans:`Está bien, pero se puede mejorar. Por eso que yo te decía que hay que aprender de la data. O sea, no es solamente poner esa vaina de pinga y ya. Entonces, ¿qué fue lo que aprendimos, marico? Que los videos con tu cara funcionaron mejor. Que los de la serie funcionaron mejor. Por otro lado, tuviste lo de los techos. Entonces, coño, es momento de... Y ojo, tú pagas esta verga, marico, y se te activan y sigues con tu campaña de pinga porque está optimizada. Pero, bueno, se trata de mejorar y qué es lo que da mejores resultados. Exacto. El día de mañana, marico, el día de mañana puede cambiar. Lo mejor el día de mañana lo que mejor da resultados son las sillas de resina o las sillas plásticas. No sé. O al final es eso. Es como que uno tiene una teoría. Pero hasta que no lances la verga no cambia la moda. Ahora la moda es sillas no sé qué verga. Uno no sabe. Pero lo que sí hay que estar pendiente es de dónde están esos cambios. Por lo menos lo de la temporada de lluvia y los toldos, marico, es fundamental. Es un buen momento de aprovecharlo porque en enero y en febrero, manico, quizás es poco. Tienes el sol, pero quizás es poco lo que va salir. No como ahorita.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"C05",lot:"asesoria",cat:"Tips",tipo:"Tip de Algoritmo",titulo:"Cómo Meta protege tu presupuesto automáticamente",hook:"Cuando Meta descubrió que este te estaba generando más resultados, ve lo que sucede aquí.",ini:"32:12.526",fin:"33:15.126",dur:"62.6 s",
+porque:["Curiosidad: Desmitifica cómo funcionan las campañas.","Emoción: Tranquilidad al saber que el sistema no desperdicia dinero.","Retención: 'Toda la plata se fue para los que te funcionan'."],
+estructura:["Hook: Meta redistribuye el presupuesto.","Desarrollo: El anuncio de 73 recibió 260 dólares.","Cierre: El algoritmo protege tu inversión."],
+trans:`Sí, Entonces, tu plata siempre fue para los mejores. No, no, cuando Meta descubrió que este te estaba generando más resultados, este que te dio 73. ¿Estás viendo la pantalla o no? Cuando Meta descubrió que este se estaba generando más, ve lo que sucede aquí. Vamos a el Bungie... ¿A dónde está? Aquí está. El Amount Span. Vamos ver si podemos mover esta verga. No, déjame como a este porque se ve mejor. Ok, fíjate. Aquí se supone que cada uno de estos... Tienen que decir 5 dólares, 10 dólares, 5 dólares, todos tienen la misma cantidad para gastar ¿verdad? Pero ¿qué sucede? Cuando empiezas a generar más resultados, a ver que esto es que se está tomando solo, que bueno... Cuando generas el resultado, este de 73, fíjate, este le metió 260 dólares y a los demás 20, 30, 9... A ver, el que menos sacó, te sacó uno, no le invirtió más ¿eh? Entonces toda la plata se fue para los que te funcionan ¿Te das cuenta? y así te protege.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"C06",lot:"asesoria",cat:"Tips",tipo:"Tip de Consultoría",titulo:"No asumas, pregunta y recomienda",hook:"Yo probaría eso porque tienes la oportunidad de vender tus mejores productos así.",ini:"37:35.022",fin:"38:38.216",dur:"63.2 s",
+porque:["Curiosidad: Rompe el patrón de solo enviar catálogo.","Emoción: Empatía con el cliente que no sabe qué necesita.","Retención: Hacer preguntas cierra mejores ventas."],
+estructura:["Hook: Probar un nuevo enfoque de venta.","Desarrollo: Recomendar en lugar de solo dar precios.","Cierre: Es cuestión de probar."],
+trans:`¡J.P.! Yo probaría eso porque tienes la oportunidad amarica de vender tus mejores productos así. O sea, de nuevo, pruébalo, no es algo de que bueno voy a cambiar, por ejemplo me cayeron 10 conversaciones, las 10 las voy a manejar así, te cayeron 10, prueba 3 con ese, con esa vaina, porque quien quita a lo mejor puede cerrar mejor así porque al final la gente si es un planner de ping a lo mejor el planner sabe, pero si no y alguien dice mira tengo un evento, un par que si ya me recomienda a lo mejor no tiene ni idea. Es cuestión de probar. lo mejor sí, a lo mejor seguían solamente por el precio. sea, la verdad yo no sé. Yo no manejo eso en gender, así que tampoco tengo idea, Pero yo tú lo probarías.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT.`},
+
+/* ================= ASESORÍA · TESTIMONIOS ================= */
+{id:"C07",lot:"asesoria",cat:"Testimonios",tipo:"Testimonio de Transformación",titulo:"El error de invertir a lo loco vs Estrategia",hook:"Mi experiencia fue yo intentando hacerlo todo al mismo tiempo. Sentía que con meterle capital durísimo diario iba a obtener mejores resultados.",ini:"46:41.998",fin:"47:40.482",dur:"58.5 s",
+porque:["Curiosidad: Confesión cruda de un error común.","Emoción: Alivio al descubrir que la estrategia supera al presupuesto.","Retención: 'Cuando tienes una estrategia todo fluye mejor'."],
+estructura:["Hook: La falsa creencia de más dinero = más resultados.","Desarrollo: Con capital bajo se obtienen los mismos resultados.","Cierre: La estrategia lo cambia todo."],
+trans:`Bueno, estamos acá con Jesús de Tables and Chair Miami. Jesús, a ver, cuéntame cómo era tu experiencia haciendo publicidad antes de trabajar juntos. Mira, mi experiencia fue yo intentando hacerlo todo al mismo tiempo. Primero, yo sentía que simplemente con meterle capital durísimo diario, yo iba a obtener mejores resultados. Ya me di cuenta que trabajando con Yocno, que tú pudiendo con un capital bastante bajo diario, tú puedes obtener los mismos resultados que... metiéndole 50 dólares al día. Y la verdad que cuando tienes una estrategia todo fluye mucho mejor. Hay que simplemente hacerlo a lo loco como lo hacía yo, más soltándole dinero.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"C08",lot:"asesoria",cat:"Testimonios",tipo:"Testimonio de Resultados",titulo:"De $50 diarios a $10 diarios con los mismos resultados",hook:"Usé cierta ayuda de un hermano mío que tiene un negocio de grifería, pero no me dio ningún tipo de estrategia.",ini:"47:51.074",fin:"49:04.142",dur:"73.1 s",
+porque:["Curiosidad: Contrasta método empírico vs. profesional.","Emoción: Sorpresa al gastar 5 veces menos con los mismos leads.","Retención: Dato contundente de retorno de inversión."],
+estructura:["Hook: El método de pagar por pagar.","Desarrollo: Sin estrategia ni agrupación de anuncios.","Cierre: Mismo resultado con 10-15 dólares diarios."],
+trans:`Ok, lo que pasa es que yo usé cierta ayuda de un hermano mío que tiene un negocio de grifería y él me dio ciertos consejitos ahí, pero no me dio ningún tipo de estrategia. Él me ayudó fue a setear la cuenta y cómo meter para empezar a pagar y yo, yo simplemente vi el vídeo que me gustaba de lo que nosotros hacíamos y yo le metí dinero y ya. Pudiese ser por el botón azul le di par de veces. Y ya como a la quinta vez que intenté poner publicidad, aparte que lo hacía, por ejemplo, cada video que yo hacía, le ponía su publicidad individual. No hacía una estrategia, un conjunto de todo, de ver cuál daba mejor o menor resultado para descartar o ver qué lo que funcione. Claro. Y en ese momento que activaste esa publicidad, ¿te escribían? ¿O solamente tenías views y comentarios? No, sí me escribían porque yo ajustaba la publicidad nada más a lo de los mensajes. Era lo único que sabía hacer. Yo sabía poner que me mandaran mensajes y ya. Ok, como cuánto llevaban en esa época, recuerdos o no? Bueno, yo metiéndole un capital de 50 dólares diario que estaba agresivo, me pueden escribir unas 5 personas y de las 5 personas 3 estaban interesadas. Ahora estoy obteniendo ese mismo resultado con un límite diario de 10 a 15 dólares.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"C09",lot:"asesoria",cat:"Testimonios",tipo:"Testimonio de Confianza",titulo:"El valor de tener un apoyo y estructura",hook:"Uno, la organización, se ve algo mucho más estructurado. De hecho, tú siempre me estás ayudando, me das ideas de contenido.",ini:"49:36.102",fin:"50:26.194",dur:"50.1 s",
+porque:["Curiosidad: El valor no es solo la publicidad, sino el acompañamiento.","Emoción: Tranquilidad de tener el dinero en manos expertas.","Retención: El dolor de gastar sin ver resultados."],
+estructura:["Hook: La organización y estructura.","Desarrollo: Tener un apoyo vs. hacerlo solo.","Cierre: Ver el retorno de la inversión."],
+trans:`...qué sientes que ha sido como que lo más importante, más allá del presupuesto, que ha sido que en esta experiencia como que lo que tú has visto que cambió las cosas? Uno, la organización, se ve algo mucho más estructurado. De hecho, tú siempre me estás ayudando, me das ideas de contenido. Es bueno siempre tener un apoyo a tu lado, que a pesar de... A diferencia de estar todo haciendo todo solo a los golpes. Claro, cuando eres dueño de negocio tienes mil cosas pasando al mismo tiempo y a veces es difícil un poquito delegar, pero cuando te das cuenta de los resultados creo que es un poquito más fácil, ya tienes más confianza de que, bueno, ya sé que mi dinero se está yendo para un buen lugar y lo estás viendo en retorno de la inversión. Sí, porque no es agradable tampoco ver que gastaste $50 y te escriba una sola persona y te dejen vivir.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT.`},
+
+{id:"C10",lot:"asesoria",cat:"Testimonios",tipo:"Testimonio de Recomendación",titulo:"Por qué este servicio es para todos los dueños de negocio",hook:"Me parece que es algo que pudieran implementar todas las personas que son dueñas de negocios.",ini:"50:39.950",fin:"51:31.534",dur:"51.6 s",
+porque:["Curiosidad: Un dueño validando el servicio frente a cámara.","Emoción: Buena relación costo-resultado.","Retención: Recomendación genuina que genera confianza."],
+estructura:["Hook: Recomendación abierta.","Desarrollo: Relación costo-resultado vs. métodos tradicionales.","Cierre: Agradecimiento y buenos deseos."],
+trans:`Sí, Me parece que es algo que pudieran implementar todas las personas que son dueñas de negocios. Me parece que es bastante efectivo y no me parece, a pesar de, a diferencia de los métodos tradicionales que tienes que gastar y gastar y gastar, aquí tú puedes obtener un buen resultado, una buena relación costo-resultado, incluyendo incluyéndote a ti y el costo de tus servicios aparte de la publicidad. A mí me parece genial tanto contar con tus servicios como la publicidad que ofrecen hoy en día las redes sociales. Buenísimo, hermano. Bueno, gracias por ese review y espero que sigan esos éxitos en Tables and Cheer Miami. Dale, metemos en contacto.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT.`},
+
+/* ================= ASESORÍA · VERTICALES V ================= */
+{id:"V01",lot:"asesoria",cat:"Verticales",tipo:"Estrategia / Algoritmo",titulo:"Cómo Meta protege tu presupuesto",hook:"Sí, entonces, tu plata siempre fue para los mejores.",ini:"32:12.526",fin:"33:32.000",dur:"~79 s",
+porque:["Curiosidad: Revela cómo funciona el algoritmo de Meta.","Emoción: Alivio al entender la optimización automática.","Retención: Datos reales (260 vs 20 dólares)."],
+estructura:["Hook: La plata va a los mejores anuncios.","Desarrollo: Redistribución del presupuesto (Amount Span).","Cierre: El algoritmo como escudo."],
+trans:`Sí, Entonces, tu plata siempre fue para los mejores. No, no, cuando Meta descubrió que este te estaba generando más resultados, este que te dio 73. ¿Estás viendo la pantalla o no? Cuando Meta descubrió que este se estaba generando más, ve lo que sucede aquí. Vamos a el Bungie... ¿A dónde está? Aquí está. El Amount Span. Vamos ver si podemos mover esta verga. No, déjame como a este porque se ve mejor. Ok, fíjate. Aquí se supone que cada uno de estos... Tienen que decir 5 dólares, 10 dólares, 5 dólares, todos tienen la misma cantidad para gastar ¿verdad? Pero ¿qué sucede? Cuando empiezas a generar más resultados, a ver que esto es que se está tomando solo, que bueno... Cuando generas el resultado, este de 73, fíjate, este le metió 260 dólares y a los demás 20, 30, 9... A ver, el que menos sacó, te sacó uno, no le invirtió más ¿eh? Entonces toda la plata se fue para los que te funcionan ¿Te das cuenta? y así te protege.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT. Cierre verificado.`},
+
+{id:"V02",lot:"asesoria",cat:"Verticales",tipo:"Retención / Hooks",titulo:"La regla de los primeros 3 segundos",hook:"Cuérdate que, Marico, la gente le para a bola a los primeros tres segundos.",ini:"21:09.870",fin:"22:21.000",dur:"~71 s",
+porque:["Curiosidad: Estadísticas reales de caída de atención.","Emoción: Urgencia al perder audiencia por intros lentas.","Retención: Contrasta lo que NO se debe hacer."],
+estructura:["Hook: La importancia de los primeros 3 segundos.","Desarrollo: Métricas de retención.","Cierre: El error común en la intro."],
+trans:`Bueno, exacto. Me dices que con eso están ahorrando el 20%. Eso ayuda si lo muestras en el video. Cuérdate que, Marico, la gente le para a bola a los primeros tres segundos. Y después, Marico, fíjate, ve estas estadísticas aquí. Mira el tiempo en que la gente vio el video. Esto es 25%, 50 % del video, 75, 95. En el 25 % del video tienes mayor cantidad de gente. Y mira cómo se va cayendo. O sea, de esta, el video que más resultados te produjo, que fue este. Marico, 2.000 personas vieron el 25%. Y ya, la mitad del video, ya tienes menos la mitad de las personas que lo vieron, que los primeros tres segundos. Así importantes son los, eso, ese principio del video. Y es que Marico decide una lo que quiere. ¿Sabes? Si ya es tal para jardines, mejor, el mejor evento, no sé qué. Y después dice lo que sea. Tenemos el... Shipping gratis en septiembre, no sé qué, si nos contactan ahora mismo. Pero en los primeros tres segundos no puede ser, hola, mi nombre es Jesús, yo estoy en Miami, no, se te fueron.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT. Cierre verificado.`},
+
+{id:"V03",lot:"asesoria",cat:"Verticales",tipo:"Branding / Confianza",titulo:"El factor 'Family-Owned' que enamora a los gringos",hook:"Hay una expresión aquí que le gusta a mucha gente, que es family-owned.",ini:"26:43.918",fin:"27:40.653",dur:"~56 s",
+porque:["Curiosidad: Término cultural con ventaja competitiva.","Emoción: Humanizar la marca.","Retención: Guion exacto de cómo vender puntualidad."],
+estructura:["Hook: El poder de 'family-owned'.","Desarrollo: Valorar hablar con los dueños.","Cierre: Propuesta de cercanía y confianza."],
+trans:`Sí, hay que aceptarlo, ¿Cómo es interesante eso? Por ejemplo, que diga, mira, estábamos 20 minutos antes de que empiece tu evento. No sé, que se invente una ahí, Pero que diga, mira, estamos aquí. Por lo menos, si lo hace en inglés, hay una expresión aquí que le gusta a mucha gente, que es family-owned. sea, los gringos es una vaina, como que family-owned es que, una familia que... Ellos mismos son los que hacen la vaina, que estás hablando con los dueños. A los gringos les gusta burro. Entonces, sí, que, somos... y familiares. Family on, puntuales, nosotros mismos vamos, te montamos y te hacemos que tu evento sea lo que tú quieras. Vas a hablar directamente con nosotros. Mierda, qué recho. Estamos hablando directamente con los dueños, vienen para acá, nos echamos ahí, nos vemos la cara. A ellos les gusta eso.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT. Cierre verificado.`},
+
+{id:"V04",lot:"asesoria",cat:"Verticales",tipo:"Estrategia de Clientes",titulo:"Event Planners vs. Clientes Directos",hook:"¿Entre planners y la gente directa, quién te contacta más? La gente directa.",ini:"13:22.190",fin:"14:07.662",dur:"~45 s",
+porque:["Curiosidad: Analiza los dos tipos de clientes del nicho.","Emoción: Validación del comportamiento de planners recurrentes.","Retención: Justifica los anuncios para llegar a intermediarios."],
+estructura:["Hook: Comparación planners vs. directos.","Desarrollo: La ventaja oculta de los planners.","Cierre: La importancia de la publicidad constante."],
+trans:`Pero bueno, ¿cuánta gente tú crees que...? Obviamente esto está también atacando a los planners. ¿Entre planners y la gente directa, quién te contacta más? La gente directa. la gente directa. Lo bueno del planner es que a pesar de que si ya te conoce una vez y le parece tu servicio de pinga y los precios de pinga y todo de pinga, marico se quedan contigo y te están dando chamba. yeah. Eso es lo bueno por ese lado, es que tú no tienes que hablar con el cliente, simplemente ya te llega con lo que quieres, pa pa pa pa pa pa. Le das precios, le gustas, listo, chao, cerrado. Sí, Obviamente ahí tienes un acceso directo. Y es la importancia igual de tener anuncios, Marico, porque al final esa gente se está echando coñazo todos los días para buscar eventos y si nosotros no le salimos a ellos, no se enteran de nosotros. Igual es importante siempre tener publicidad, así caigan a través de ellos. No pasa nada.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT. Cierre verificado.`},
+
+{id:"V05",lot:"asesoria",cat:"Verticales",tipo:"Copywriting / Ofertas",titulo:"Cómo vender en temporada de lluvias",hook:"Los toldos, Marico, es una excelente publicidad para hacer ahorita.",ini:"23:47.640",fin:"24:51.258",dur:"~63 s",
+porque:["Curiosidad: Convierte la lluvia en oportunidad de venta.","Emoción: Miedo a perder el evento.","Retención: Ángulo de marketing y descuento listos."],
+estructura:["Hook: Necesidad estacional (toldos).","Desarrollo: Historia de evento casi arruinado.","Cierre: Pitch emocional y oferta."],
+trans:`Ok, ok, ok. Marico, haz una lista de esas vergas, O sea, sé que se queda la dilla. Pero este son el tipo de vergas que generan billete, O sea, fíjate. Los toldos, Marico, es una excelente publicidad para hacer ahorita. Todavía nos quedan dos meses de lluvia. Urda pues. Marico, el sábado pasado nosotros tuvimos un evento y de verga lo suspenden porque estaba lloviendo y no había toldo. La típa se dio cuenta que quería el toldo el mismo día. Hasta el día anterior Jesús estaba tratando de comprar el toldo y no quiso. Y el día del evento estaba pariendo. Entonces, Marico, juega con ese miedo. No dejes que se te dañe el evento por no tener un toldo. Contrátanos en estos meses de lluvia y tienes un 20 % de descuento. De una. ¿Cómo fue que agita? No dejes que tu evento se dañe por la lluvia. es que tu evento se dañe por la lluvia o pues tu evento es demasiado especial como para que se dañe por la lluvia, por ejemplo.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT. Cierre verificado.`},
+
+{id:"V06",lot:"asesoria",cat:"Verticales",tipo:"Escalamiento / Técnica",titulo:"Por qué debes DUPLICAR campañas y no editarlas",hook:"Si le quito esto ahorita, yo tengo que duplicar la campaña y esta campaña ya está optimizada.",ini:"52:42.438",fin:"53:50.734",dur:"~68 s",
+porque:["Curiosidad: Error técnico común que mata rendimiento.","Emoción: Seguridad al minimizar riesgos.","Retención: Lógica del 'reset' al duplicar vs. editar."],
+estructura:["Hook: El problema de editar una campaña optimizada.","Desarrollo: Duplicar para conservar el historial.","Cierre: Campañas de respaldo si una cae."],
+trans:`Claro, así mismo. Está interesante eso y ese es final, la idea de... de hacer el targetting más específico, pero si al final no sabemos, mucha gente no sabe a quién le vende, se hace más complicado y ahí es donde empieza a fallar la vaina. O si lo haces muy general pensando que le puedes vender a todo el mundo, también es complicado. Por lo menos tu demografía yo la puse por tipo de eventos, por vaina, por planners, por eso se está escribiendo esa gente y no se está escribiendo gente random. Aparte, obviamente, de la delimitación, que lo que vamos a hacer es cuando prendamos los otros ads, le vamos a quitar esa zona. Si quieres, cuando reactives esto, Lo que podemos hacer es. Lo que pasa es que Marico, si le quito esto ahorita, yo tengo que duplicar la campaña y esta campaña ya está optimizada como está. Entonces preferiría dejar esta así, tener los nuevos videos, montar la campaña nueva y después apagar esta. La quieres apagar o bueno, ahí sí tomamos la decisión si la quieres dejar también. La tengo que duplicar. O sea, no hay manera de que yo le quite las ciudades funcionando así mismo. Hay que duplicarla y va a empezar desde nuevo. Hay muchas veces que funciona y se resetea y la vaina empieza a funcionar muy arrecho porque ya funcionó, que es lo más probable, es lo más probable que suceda. O empieza a caer. Pero entonces si se empieza a caer tenemos la otra campaña activa. Entonces es preferible que minimicemos riesgo con la otra campaña.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT. Cierre verificado.`},
+
+{id:"V07",lot:"asesoria",cat:"Verticales",tipo:"Colaboraciones / Influencers",titulo:"La cruda realidad de los canjes con Influencers",hook:"El peor de los influencers es que piden y después no te dejan bien.",ini:"15:14.766",fin:"16:25.802",dur:"~71 s",
+porque:["Curiosidad: Desromantiza colaboraciones con influencers.","Emoción: Precaución ante falta de profesionalismo.","Retención: El canje como inversión que debe medirse."],
+estructura:["Hook: El riesgo de influencers que no cumplen.","Desarrollo: Negociación de un Reel vs. inventario parado.","Cierre: El verdadero ROI de la colaboración."],
+trans:`¿Y cuándo es? ¿O ya lo hiciste? sería el 6 de septiembre. está bien, si no, yo le dije que plomo ¿Voy a pasar que se enamora de algo? Y de repente te ello por ahí haciendo colapses mierdas locas Lo que tiene que cuadrar bien es qué exposición te va de ella porque el peor de los influencers es que piden y después no te dejan bien. Le le pones querida a tu un bato de verga. y eso es un obstáculo a pesar de que ese dios lo coñence. mmm parezca la final o sea ella me dijo este fue el trato este que va a tirar un real vaina que me iba poner a mí Tal, que historia, yo le dije dale play, quizás me sirva más que me dé lo real. Claro. Si de verdad te hace eso, te pingas porque le vas a llegar a una gente, a sus seguidores, lo que sea, y chévere. Pero lo importante es que lo hagas, maní, porque de nuevo, dicen que van a hacer vainas, después, ya lo hicieron o se que, dicen cualquier huevón, ahí no lo hacen. No se coño, chimbo, que te quedes con las vainas, a tu sí pusiste las sillas y no te dieron lo que... ¿sabes? Eso es todo. Sí. Si te lo dan te pingas, maní, que es una inversión, pues. O sea, si pones publicidad, un día los llevaste para allá, esas sillas no están haciendo nada, gastaste fue en gasolina, maní. No importa, ¿sabes? Y el tiempo, pero bueno, podés ganar más de lo que vas a invertir ahí. Ahora, queda rechera, queda rechera, que tú agarras un día y se lo pongas a ella, Marique, y de repente te llama una planner y te diga, mira, para ese mismo día 200 sillas y ahí sí vas a pasar rechera, pues, Eso es lo único. Pero el resto, ¿sabes?`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT. Cierre verificado.`},
+
+{id:"V08",lot:"asesoria",cat:"Verticales",tipo:"Superación / Casos de Éxito",titulo:"De quemar $50 diarios a tener estrategia",hook:"Yo sentía que simplemente con meterle capital durísimo diario, yo iba a obtener mejores resultados.",ini:"46:34.549",fin:"47:40.482",dur:"~65 s",
+porque:["Curiosidad: Un dueño confiesa su mayor error en ads.","Emoción: Identificación con 'tirar dinero'.","Retención: Contraste entre caos y optimización."],
+estructura:["Hook: La falsa creencia de más dinero = más ventas.","Desarrollo: El error del 'botón azul' sin estrategia.","Cierre: Menos dinero y buena estrategia = mejores resultados."],
+trans:`Así mismo. Ok, ¿estamos listos entonces? Está grabando, ok. Bueno, estamos acá con Jesús de Tables and Chair Miami. Jesús, a ver, cuéntame cómo era tu experiencia haciendo publicidad antes de trabajar juntos. Mira, mi experiencia fue yo intentando hacerlo todo al mismo tiempo. Primero, yo sentía que simplemente con meterle capital durísimo diario, yo iba a obtener mejores resultados. Ya me di cuenta que trabajando con Yocno, que tú pudiendo con un capital bastante bajo diario, tú puedes obtener los mismos resultados que... metiéndole 50 dólares al día. Y la verdad que cuando tienes una estrategia todo fluye mucho mejor. Hay que simplemente hacerlo a lo loco como lo hacía yo, más soltándole dinero.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT. Cierre verificado.`},
+
+/* ================= ASESORÍA · TOP TIER ================= */
+{id:"T01",lot:"asesoria",cat:"Top Tier",tipo:"Pricing / Percepción de Valor",titulo:"La ilusión del descuento (Sin tocar tus precios)",hook:"A veces tú puedes poner una oferta de 20% de descuento y nadie sabe cuáles son tus precios.",ini:"20:13.902",fin:"21:09.870",dur:"~55 s",
+porque:["Curiosidad: Hack de percepción de valor.","Emoción: Astucia empresarial.","Retención: Estructurar costos para absorber el descuento."],
+estructura:["Hook: Descuento sin que conozcan tu tarifa base.","Desarrollo: Inflar delivery para luego 'descontarlo'.","Cierre: La percepción de ahorro cierra la venta."],
+trans:`esto le pusimos aquí, no pusimos nada de oferta, fue simplemente el mismo copy que tú usaste pero eso es algo a considerar también, yo creo que habíamos puesto uno que tiene una oferta, nunca lo pusimos No, nunca se puede usar el de Free Delivery en agosto. Igual es lo que te digo, Marico, a veces tú puedes poner una oferta de, Marico, septiembre ve 20 % de descuento y nadie sabe cuáles son tus precios, Marico. Si tú no tienes ese verbo publicado, tú pones, tú lo que haces es que le subes, lo adaptas, el 20 % es lo que que tú digas, Marico. Lo que le estás dando a ellos es la percepción de que tienen un descuento, ¿sabes? Sí, no, ahí se puede alterar todo con el delivery, yo cobro tanto el delivery y tanto la silla y vaina y ya ahí se le sube otra vez el 20%. Bueno, exacto. Me dices que con eso están ahorrando el 20%. Eso ayuda si lo muestras en el video.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT. Cierre verificado.`},
+
+{id:"T02",lot:"asesoria",cat:"Top Tier",tipo:"Ciclo de Vida / Fatiga Publicitaria",titulo:"'Surfear la Ola' (Por qué tus anuncios mueren)",hook:"Esta campaña tarde o temprano, como le está poniendo más plata a uno o dos vídeos, se va a ir muriendo.",ini:"33:35.000",fin:"34:25.000",dur:"~50 s",
+porque:["Curiosidad: Explica la fatiga publicitaria.","Emoción: Prevención ante la caída de resultados.","Retención: Meter 3, 4 o 5 videos nuevos constantemente."],
+estructura:["Hook: Meta premia al mejor, pero hay saturación.","Desarrollo: Muerte natural al concentrar presupuesto.","Cierre: Surfear la ola con material nuevo."],
+trans:`esa es la ventaja de hacer los anuncios así como te dije porque la plata siempre va a ir para el que mejor funcione. Ahora, esta campaña tarde o temprano como le está poniendo más plata a uno o dos vídeos, tarde o temprano se va a ir muriendo. Entonces por eso es que hay que estar pendiente de qué es lo que viene o qué es lo que está funcionando y se hacen otros parecidos a eso. Siempre está surfiando la ola. Igual la próxima vez que hagamos una campaña completamente diferente, igual hay que hacer como este, que meter tres, cuatro, cinco vídeos para que haga lo mismo.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT. Cierre verificado.`},
+
+{id:"T03",lot:"asesoria",cat:"Top Tier",tipo:"Motivación / Realidad del Empresario",titulo:"La cruda realidad de tener tu propio negocio",hook:"Tener negocios no es fácil, pero verga, trabaja pa' ti.",ini:"58:14.446",fin:"58:43.726",dur:"~29 s",
+porque:["Curiosidad: Reflexión cruda y sin filtros.","Emoción: Orgullo y validación para el dueño cansado.","Retención: Mensaje corto y altamente compartible."],
+estructura:["Hook: Lo difícil vs. para quién trabajas.","Desarrollo: Trabajar el doble bajo tus propias reglas.","Cierre: Controlar tu vida y ver el éxito."],
+trans:`De bola, de bola Marico, qué bien, de pana eso me alegra burda, Marico tener negocios no es fácil pero verga trabaja pa ti, Marico, sea, si tienes que trabajar burda, trabaja el doble, el triple pero estás en tu horario, estás haciendo una vaina que te gusta, Marico, tú controlas tu vida relativamente, sea, y lo que es Marico, sí échale bola con los clientes, échale bola con clientes, con tu equipo y tenés esas inversiones ahí, pero el resto Marico, de pana es un éxito.`,
+nota:`Extraído del transcript. Fragmento continuo. Source alignment: EXACT. Cierre verificado.`}
+];
+
+const LOTS={ep55:"EP55 · Amanda Vicari",webinar:"Webinar · JOC × Pamela",asesoria:"Asesoría · Tables & Chairs"};
+let state={}, openCards=new Set();
+let filterLot="all", filterStatus="all";
+
+function loadState(){
+  const saved=document.getElementById('saved-state');
+  try{ if(saved && saved.textContent.trim()){ state=JSON.parse(saved.textContent); return; } }catch(e){}
+  try{ state=JSON.parse(localStorage.getItem('jocReviewState')||'{}'); }catch(e){ state={}; }
+}
+function saveState(){ try{localStorage.setItem('jocReviewState',JSON.stringify(state));}catch(e){} }
+function getState(id){ return state[id]||{status:'draft',note:''}; }
+function setState(id,patch){ state[id]=Object.assign(getState(id),patch); saveState(); }
+
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+
+function buildChips(){
+  const lc=document.getElementById('lotChips');
+  let h='<span class="chip '+(filterLot==='all'?'on':'')+'" onclick="setLot(\'all\')">Todos los lotes</span>';
+  for(const k in LOTS) h+='<span class="chip '+(filterLot===k?'on':'')+'" onclick="setLot(\''+k+'\')">'+LOTS[k]+'</span>';
+  lc.innerHTML=h;
+  const sc=document.getElementById('statusChips');
+  const st=[['all','Todos'],['draft','Draft'],['confirmed','Confirmados'],['rejected','Rechazados']];
+  sc.innerHTML=st.map(s=>'<span class="chip '+(filterStatus===s[0]?'on':'')+'" onclick="setStatus(\''+s[0]+'\')">'+s[1]+'</span>').join('');
+}
+function setLot(l){filterLot=l;render();}
+function setStatus(s){filterStatus=s;render();}
+
+function getFiltered(){
+  const q=document.getElementById('search').value.toLowerCase().trim();
+  return CLIPS.filter(c=>{
+    if(filterLot!=='all'&&c.lot!==filterLot)return false;
+    const st=getState(c.id).status;
+    if(filterStatus!=='all'&&st!==filterStatus)return false;
+    if(q){const hay=(c.titulo+' '+c.hook+' '+c.cat+' '+c.tipo+' '+c.trans).toLowerCase();if(!hay.includes(q))return false;}
+    return true;
+  });
+}
+
+function clipTXT(c){
+  const s=getState(c.id);
+  const stLabel={draft:'DRAFT (pendiente)',confirmed:'CONFIRMADO',rejected:'RECHAZADO'}[s.status];
+  return `CLIP ${c.id}
+================================
+LOTE: ${LOTS[c.lot]}
+CATEGORÍA: ${c.cat}
+TIPO: ${c.tipo}
+TÍTULO EDITORIAL: ${c.titulo}
+
+HOOK REAL:
+"${c.hook}"
+
+TIMESTAMP DE EXTRACCIÓN
+Inicio: ${c.ini}
+Final: ${c.fin}
+Duración: ${c.dur}
+
+POR QUÉ FUNCIONA:
+${c.porque.map(p=>'- '+p).join('\n')}
+
+ESTRUCTURA NARRATIVA:
+${c.estructura.map(e=>'- '+e).join('\n')}
+
+TRANSCRIPCIÓN CONTINUA:
+${c.trans}
+
+NOTA DE FUENTE:
+${c.nota}
+
+================================
+REVISIÓN
+Estado: ${stLabel}
+Corrección / nota del revisor:
+${s.note||'(sin nota)'}
+`;
+}
+
+function download(name,content){
+  const blob=new Blob([content],{type:'text/plain;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+
+function exportClipTXT(id){
+  const c=CLIPS.find(x=>x.id===id);
+  download('JOC_CLIP_'+c.id+'.txt',clipTXT(c));
+  toast('TXT exportado: '+c.id);
+}
+function exportAllTXT(){
+  let out='JOC · SALA DE REVISIÓN · EXPORT COMPLETO\nFecha: '+new Date().toLocaleString()+'\nTotal clips: '+CLIPS.length+'\n\n';
+  CLIPS.forEach(c=>out+=clipTXT(c)+'\n\n========================================\n\n');
+  download('JOC_REVISION_COMPLETA.txt',out);
+  toast('TXT combinado exportado');
+}
+function exportVisibleTXT(){
+  const list=getFiltered();
+  if(!list.length){toast('No hay clips visibles');return;}
+  let out='JOC · EXPORT VISIBLES ('+list.length+' clips)\nFecha: '+new Date().toLocaleString()+'\n\n';
+  list.forEach(c=>out+=clipTXT(c)+'\n\n========================================\n\n');
+  download('JOC_REVISION_VISIBLES.txt',out);
+  toast('TXT de visibles exportado');
+}
+function exportHTML(){
+  const saved=document.getElementById('saved-state');
+  saved.textContent=JSON.stringify(state);
+  const html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
+  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='JOC_REVISION_con_cambios.html';a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  toast('HTML con cambios exportado');
+}
+
+function setStatusClip(id,st){
+  setState(id,{status:st});
+  render(true);
+  toast(id+' → '+({draft:'Draft',confirmed:'Confirmado',rejected:'Rechazado'}[st]));
+}
+function updateNote(id,val){ setState(id,{note:val}); }
+function toggleCard(id){ openCards.has(id)?openCards.delete(id):openCards.add(id); render(true); }
+
+function render(keepScroll){
+  buildChips();
+  const list=getFiltered();
+  document.getElementById('count').textContent='Mostrando '+list.length+' de '+CLIPS.length+' clips';
+  const box=document.getElementById('list');
+  box.innerHTML=list.map(c=>{
+    const s=getState(c.id);
+    const isOpen=openCards.has(c.id);
+    return `<div class="card ${s.status} ${isOpen?'open':''}">
+      <div class="chead" onclick="toggleCard('${c.id}')">
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <span class="badge b-${c.lot}">${c.lot.toUpperCase()}</span>
+          <span class="badge b-cat">${c.cat}</span>
+        </div>
+        <div class="ctitle">
+          <h3>${c.id} · ${c.titulo}</h3>
+          <div class="meta"><span><b>Tipo:</b> ${c.tipo}</span><span><b>Inicio:</b> ${c.ini}</span><span><b>Fin:</b> ${c.fin}</span><span><b>Dur:</b> ${c.dur}</span></div>
+        </div>
+        <span class="status-pill s-${s.status}">${{draft:'Draft',confirmed:'Confirmado',rejected:'Rechazado'}[s.status]}</span>
+        <span class="expand-ico">▾</span>
+      </div>
+      <div class="cbody">
+        <div class="field"><h4>Hook real</h4><div class="box hook">"${c.hook}"</div></div>
+        <div class="field"><h4>Por qué funciona</h4><ul class="clean">${c.porque.map(p=>'<li>'+p+'</li>').join('')}</ul></div>
+        <div class="field"><h4>Estructura narrativa</h4><ul class="clean">${c.estructura.map(e=>'<li>'+e+'</li>').join('')}</ul></div>
+        <div class="field"><h4>Transcripción continua</h4><div class="box trans">${c.trans}</div></div>
+        <div class="field"><h4>Nota de fuente</h4><div class="box" style="font-size:12px;color:var(--mut)">${c.nota}</div></div>
+        <div class="field"><h4>Corrección / nota del revisor</h4>
+          <textarea placeholder="Escribe correcciones, observaciones o notas de edición para este clip…" onchange="updateNote('${c.id}',this.value)">${s.note}</textarea>
+        </div>
+        <div class="toolrow">
+          <button class="stbtn st-confirm ${s.status==='confirmed'?'active':''}" onclick="setStatusClip('${c.id}','confirmed')">✓ Confirmar</button>
+          <button class="stbtn st-reject ${s.status==='rejected'?'active':''}" onclick="setStatusClip('${c.id}','rejected')">✗ Rechazar</button>
+          <button class="stbtn st-draft" onclick="setStatusClip('${c.id}','draft')">↺ Draft</button>
+          <span style="flex:1"></span>
+          <button class="primary" onclick="exportClipTXT('${c.id}')">⬇ Exportar TXT</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+loadState();
+render();
+</script>
+
+<!-- JOC_PATCH_V3 --><script>
+(function () {
+  if (typeof CLIPS === "undefined") return;
+
+  var updates = {
+    C01: {
+      fin: "22:21.000",
+      dur: "71.1 segundos",
+      porque: [
+        "Curiosidad: Desmitifica la creencia de que el contenido largo retiene por si solo.",
+        "Emocion: Urgencia al mostrar datos reales de abandono de audiencia.",
+        "Retencion: Cierra con el error tipico de empezar presentandose y perder a la audiencia."
+      ],
+      estructura: [
+        "Hook: Los primeros 3 segundos deciden la retencion.",
+        "Desarrollo: Estadisticas reales de caida (25%, 50%, 75%).",
+        "Cierre: Ejemplo concreto de intro que mata el anuncio: hola, mi nombre es Jesus."
+      ],
+      trans: "Bueno, exacto. Me dices que con eso estan ahorrando el 20%. Eso ayuda si lo muestras en el video. Cuerdate que, Marico, la gente le para a bola a los primeros tres segundos. Y despues, Marico, fijate, ve estas estadisticas aqui. Mira el tiempo en que la gente vio el video. Esto es 25%, 50 % del video, 75, 95. En el 25 % del video tienes mayor cantidad de gente. Y mira como se va cayendo. O sea, de esta, el video que mas resultados te produjo, que fue este. Marico, 2.000 personas vieron el 25%. Y ya, la mitad del video, ya tienes menos la mitad de las personas que lo vieron, que los primeros tres segundos. Asi importantes son los, eso, ese principio del video. Y es que Marico decide una lo que quiere. Sabes? Si ya es tal para jardines, mejor, el mejor evento, no se que. Y despues dice lo que sea. Tenemos el... Shipping gratis en septiembre, no se que, si nos contactan ahora mismo. Pero en los primeros tres segundos no puede ser, hola, mi nombre es Jesus, yo estoy en Miami, no, se te fueron.",
+      nota: "Extraido del transcript. Fragmento continuo completado hasta el cierre real se te fueron. No se anadieron frases. Source alignment: EXACT."
+    },
+    V07: {
+      cat: "Verticales",
+      tipo: "Enfoque / Estructura de cuenta",
+      titulo: "No diluyas la atencion: una cuenta a la vez",
+      hook: "Si estas pendiente de crecer una cuenta y tienes otra, te va a diluir la tension para alla.",
+      ini: "08:07.000 (estimado)",
+      fin: "09:05.110",
+      dur: "~58 segundos",
+      porque: [
+        "Curiosidad: Convierte una decision operativa de la sesion en un principio de crecimiento.",
+        "Emocion: Claridad y disciplina para el dueno que quiere abrir frentes al mismo tiempo.",
+        "Retencion: Cierra con una regla simple: dividir atencion diluye traccion."
+      ],
+      estructura: [
+        "Hook: Quitamos ese elemento o lo dejamos para la otra pagina?",
+        "Desarrollo: La tentacion de usar otra pagina por nombre o estructura.",
+        "Cierre: Si intentas crecer dos frentes, diluyes la tension y no concentras resultados."
+      ],
+      trans: "Naples tambien esta del otro lado? Quieres quitar eso tambien o no? No, si, vamos a quitarlo porque eso se lo ponemos cuando empieza a hacerle la publicidad a la otra pagina. Lo incorporamos en eso. Por que quiero usar otra pagina de hablando? Cono, no se, por el nombre y para tener lo mejor estructurado. Si estas pendiente de crecer una cuenta y tienes otra, te va a diluir la tension para alla.",
+      nota: "Reemplazo de V07: fragmento del transcript sobre estructura de cuentas y foco. Ajustar el inicio exacto en edicion (probablemente 2-4 segundos antes de 08:10.345) para incluir la pregunta completa."
+    }
+  };
+
+  CLIPS.forEach(function (clip) {
+    if (updates[clip.id]) {
+      Object.assign(clip, updates[clip.id]);
+    }
+  });
+
+  if (typeof render === "function") {
+    render(true);
+  }
+})();
+</script>
+</body>
+</html>
